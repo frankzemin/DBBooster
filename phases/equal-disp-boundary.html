@@ -1,0 +1,45 @@
+<div id="interface-equalDisp" class="interface-pane">
+    <div class="space-y-8">
+        <section class="card">
+            <h2 class="card-title">1. Load Files (.xlsx, .csv)</h2>
+            <div id="drop-zone-equalDisp" class="drop-zone">
+                <!-- Drop zone content -->
+            </div>
+            <input type="file" id="file-upload-equalDisp" class="hidden" multiple>
+            <button id="clear-files-btn-equalDisp" class="btn-danger">Clear All Files</button>
+        </section>
+
+        <section class="card">
+            <h2 class="card-title">2. Loaded Files</h2>
+            <div id="source-columns-container-equalDisp" class="source-column-container">
+                <div id="file-tabs-equalDisp"></div>
+                <div id="source-column-list-equalDisp"></div>
+            </div>
+            <div id="data-view-container-equalDisp" class="w-full h-64">
+                <pre id="data-view-content-equalDisp"></pre>
+            </div>
+        </section>
+
+        <section id="format-builder-equalDisp" class="card">
+            <h2 class="card-title">3. Format Builder & Output</h2>
+            <button id="import-all-cols-btn-equalDisp" class="btn-success">Import All Columns</button>
+            <button id="add-manual-col-btn-equalDisp" class="btn-warning">Add Manual Column</button>
+
+            <div id="data-grid-container-equalDisp" class="data-grid-container">
+                <table class="data-grid" id="data-grid-equalDisp">
+                    <thead id="grid-head-equalDisp"></thead>
+                    <tbody id="grid-body-equalDisp"></tbody>
+                </table>
+            </div>
+
+            <h3>Preview</h3>
+            <pre id="output-preview-equalDisp"></pre>
+
+            <h3>Final Output</h3>
+            <textarea id="final-output-equalDisp"></textarea>
+            <button id="generate-output-btn-equalDisp" class="btn-primary">Generate Output</button>
+            <button id="copy-btn-equalDisp" class="btn-secondary">Copy to Clipboard</button>
+            <button id="download-btn-equalDisp" class="btn-secondary">Download File</button>
+        </section>
+    </div>
+</div>

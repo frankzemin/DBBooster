@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBbooster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="header-container p-4 md:p-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6">
+                <div class="logo-container">
+                    <div class="dbbooster-logo">
+                        <div class="logo-base">
+                            <div class="server server-top"></div>
+                            <div class="server server-middle"></div>
+                            <div class="server server-bottom"></div>
+                            <div class="connection-line line-1"></div>
+                            <div class="connection-line line-2"></div>
+                            <div class="connection-line line-3"></div>
+                            <div class="gear">
+                                <div class="gear-teeth">
+                                    <div class="tooth"></div><div class="tooth"></div><div class="tooth"></div><div class="tooth"></div>
+                                    <div class="tooth"></div><div class="tooth"></div><div class="tooth"></div><div class="tooth"></div>
+                                </div>
+                                <div class="gear-inner"></div>
+                            </div>
+                            <div class="transform-arrow">
+                                <div class="arrow-line"></div>
+                                <div class="arrow-head"></div>
+                            </div>
+                            <div class="boost-element boost-1"></div>
+                            <div class="boost-element boost-2"></div>
+                            <div class="boost-element boost-3"></div>
+                            <div class="speed-line speed-1"></div>
+                            <div class="speed-line speed-2"></div>
+                            <div class="speed-line speed-3"></div>
+                        </div>
+                    </div>
+                    <div class="brand-content">
+                        <h1 class="brand-title">DBbooster</h1>
+                        <p class="brand-subtitle">Automated DBLEAVES Parser & Formatter</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <nav>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#initial-stress">Initial Stress</a></li>
+                <li><a href="#cm-parameters">CM Parameters</a></li>
+                <li><a href="#model-configuration">Model Configuration</a></li>
+                <li><a href="#equal-disp-boundary">Equal Disp Boundary</a></li>
+                <li><a href="#earthquake-step-setting">Earthquake Step Setting</a></li>
+                <li><a href="#ru-acc-time-diagram">Ru-Acc-Time Diagram</a></li>
+            </ul>
+        </nav>
+        <main id="main-content"></main>
+    </div>
+    <div id="particles-container" class="fixed inset-0 pointer-events-none z-0"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="app.js"></script>
+    <script src="js/utils.js"></script>
+</body>
+</html>

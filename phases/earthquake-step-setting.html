@@ -1,0 +1,30 @@
+<div id="interface-earthquakeStepSetting" class="interface-pane">
+    <div class="card">
+        <div class="header-section">
+            <h1 class="text-4xl md:text-5xl font-bold">Earthquake Step Generator</h1>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
+            <div>
+                <div class="input-group">
+                    <label for="earthquake-steps-input" class="block text-lg font-medium mb-3">
+                        Number of Steps (N):
+                    </label>
+                    <div class="input-container">
+                        <input type="number" id="earthquake-steps-input" min="1" step="1" class="config-input">
+                    </div>
+                </div>
+                <button id="generate-earthquake-steps-btn" class="btn-primary">Generate Steps</button>
+            </div>
+
+            <div class="output-section">
+                <h2 class="text-2xl font-semibold mb-7">Formatted Output</h2>
+                <textarea id="earthquake-output" readonly class="output-area"></textarea>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="copy-earthquake-btn" class="btn-secondary">Copy to Clipboard</button>
+                    <button id="download-earthquake-btn" class="btn-secondary">Download as TXT</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

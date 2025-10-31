@@ -1,0 +1,28 @@
+<div id="interface-cmParams" class="interface-pane">
+    <div class="p-6 flex flex-col min-h-full">
+        <div class="flex border-b border-slate-700 mb-4">
+            <div id="cm-params-tabs-nav" class="flex space-x-1"></div>
+            <button id="add-cm-material-btn" class="ml-4 text-blue-400 hover:text-blue-300 font-bold text-2xl" title="Add New Material">+</button>
+        </div>
+        <div class="flex flex-col lg:flex-row gap-6">
+            <div id="cm-params-content" class="flex-grow overflow-auto space-y-6 lg:w-1/2"></div>
+            <div class="lg:w-1/2">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400">Suggested CM Parameters Range</h2>
+                <div class="reference-table-container">
+                    <!-- Reference table will be populated by JS -->
+                </div>
+            </div>
+        </div>
+        <div class="mt-12 pt-6 border-t border-slate-700">
+            <h2 class="text-xl font-semibold mb-4 text-blue-400">Concatenated Output (All Materials)</h2>
+            <div class="flex flex-wrap items-center mb-4">
+                <button id="concat-cm-params-btn" class="btn-primary">Generate Lines for All Materials</button>
+                <button id="copy-output-btn" class="btn-secondary">Copy All</button>
+            </div>
+            <div class="mt-4">
+                <label for="concatenated-output" class="block text-sm font-medium text-slate-300 mb-1">Result:</label>
+                <textarea id="concatenated-output" readonly class="w-full h-64 p-3 border border-slate-600 rounded-lg font-mono text-xs shadow-inner bg-slate-800 text-blue-300" placeholder="Click 'Generate...'"></textarea>
+            </div>
+        </div>
+    </div>
+</div>

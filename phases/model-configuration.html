@@ -1,0 +1,31 @@
+<div id="interface-modelConfig" class="interface-pane">
+    <div class="grid grid-cols-1 gap-0">
+        <div class="p-6 border-b border-gray-700">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">1. Load Source Data</h2>
+            <textarea id="s2k-input-modelConfig" class="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm shadow-inner bg-gray-900 text-gray-200" placeholder="Paste S2K..."></textarea>
+            <div class="flex justify-between items-center my-3">
+                <label for="file-upload-modelConfig" class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Upload S2K</label>
+                <input type="file" id="file-upload-modelConfig" class="hidden" accept=".s2k,.txt,.asc,.csv">
+                <button id="clear-data-btn-modelConfig" class="bg-gray-600 text-gray-100 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition">Clear</button>
+            </div>
+            <button id="parse-btn-modelConfig" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow-lg">Parse S2K File</button>
+        </div>
+
+        <div class="p-6 border-b border-gray-700">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">2. Inspect & Edit Source Tables</h2>
+            <div class="flex border-b border-gray-700 mb-4">
+                <div id="inspect-tabs-nav-modelConfig" class="flex space-x-1"></div>
+            </div>
+            <div id="inspect-tabs-content-modelConfig"></div>
+        </div>
+
+        <div class="p-6 bg-gray-900">
+            <h2 class="text-xl font-semibold mb-4 text-gray-200">3. Format Builder & Output</h2>
+            <div class="flex border-b border-gray-700 mb-4">
+                <div id="format-tabs-nav-modelConfig" class="flex space-x-4"></div>
+                <button id="add-tab-btn-modelConfig" class="ml-4 text-blue-400 hover:text-blue-300 font-bold text-lg" title="Add New Format Tab">+</button>
+            </div>
+            <div id="format-tabs-content-modelConfig"></div>
+        </div>
+    </div>
+</div>

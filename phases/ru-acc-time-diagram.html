@@ -1,0 +1,44 @@
+<div id="interface-ruAccTime" class="interface-pane">
+    <div class="import-section">
+        <div class="tab-nav">
+            <button class="tab-button ru-tab active" data-tab="ru-data">Time-RU</button>
+            <button class="tab-button time-acc-tab" data-tab="time-acc-data">Time ACCELERATION</button>
+            <button class="tab-button disp-tab" data-tab="displacement-data">Time-Displacement</button>
+        </div>
+
+        <div id="ru-data" class="tab-content active">
+            <div class="file-upload-area" id="ru-upload-area" data-type="ru">
+                <input type="file" id="ru-file-input" class="hidden" multiple>
+            </div>
+            <div class="file-list" id="ru-file-list"></div>
+        </div>
+
+        <div id="time-acc-data" class="tab-content">
+            <div class="file-upload-area" id="time-acc-upload-area" data-type="timeAcc">
+                <input type="file" id="time-acc-file-input" class="hidden" multiple>
+            </div>
+            <div class="file-list" id="time-acc-file-list"></div>
+        </div>
+
+        <div id="displacement-data" class="tab-content">
+            <div class="file-upload-area" id="displacement-upload-area" data-type="displacement">
+                <input type="file" id="displacement-file-input" class="hidden" multiple>
+            </div>
+            <div class="file-list" id="displacement-file-list"></div>
+        </div>
+    </div>
+
+    <div class="import-section">
+        <h3>Multi-Data Visualization</h3>
+        <div class="chart-container">
+            <canvas id="ru-acc-time-chart"></canvas>
+        </div>
+        <div class="controls-section">
+            <div class="controls-header" id="controls-toggle">
+                <span>Chart & Layer Controls</span>
+            </div>
+            <div class="controls-content" id="controls-content">
+            </div>
+        </div>
+    </div>
+</div>

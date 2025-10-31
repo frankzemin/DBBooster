@@ -1,0 +1,95 @@
+<div id="interface-initialStress" class="interface-pane">
+    <div class="space-y-8">
+        <section class="card">
+            <h2 class="card-title">1. Load Stress Data (.xlsx, .csv)</h2>
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <label for="file-upload-initialStress" class="cursor-pointer btn-primary">
+                    Upload Stress File
+                </label>
+                <input type="file" id="file-upload-initialStress" class="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                <span id="file-name-initialStress" class="text-gray-400">No file selected</span>
+                <button id="clear-data-btn-initialStress" class="btn-danger hidden">Clear</button>
+                <div id="loading-indicator-initialStress" class="hidden">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Upload file with stress data. Expects data in columns A, F, G, and H (Stresses) starting from row 4.</p>
+        </section>
+
+        <section id="data-view-section-initialStress" class="card hidden">
+            <h2 class="card-title">2. Review & Edit Data</h2>
+            <div id="summary-stats-initialStress" class="text-sm text-gray-400 bg-gray-800 p-3 rounded-lg mb-4"></div>
+
+            <div id="data-grid-container-initialStress" class="data-grid-container hidden">
+                <table class="data-grid">
+                    <thead id="grid-head-initialStress"></thead>
+                    <tbody id="grid-body-initialStress"></tbody>
+                </table>
+            </div>
+            <p id="grid-placeholder-initialStress" class="text-gray-600 text-center p-8">Upload a file to see data.</p>
+
+            <div id="pagination-controls-initialStress" class="flex justify-between items-center hidden mt-4">
+                <div class="flex items-center gap-2">
+                    <label for="rows-per-page-initialStress" class="text-sm font-medium text-gray-400">Rows:</label>
+                    <select id="rows-per-page-initialStress" class="config-select !text-sm">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="prev-page-initialStress" class="btn-secondary disabled:opacity-50">&larr; Prev</button>
+                    <span id="page-info-initialStress" class="text-sm text-gray-400">Page 1 of 1</span>
+                    <button id="next-page-initialStress" class="btn-secondary disabled:opacity-50">Next &rarr;</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="stress-analysis-section-initialStress" class="card hidden">
+            <h2 class="card-title">3. Stress Analysis</h2>
+            <button id="run-analysis-btn-initialStress" class="w-full btn-success py-3 text-lg font-semibold">
+                Run Stress Analysis
+            </button>
+
+            <h3 class="font-semibold text-gray-300 mt-6 mb-3">Average Stress per Solid</h3>
+            <div class="data-grid-container max-h-64">
+                <table class="data-grid">
+                    <thead id="avg-stress-head"></thead>
+                    <tbody id="avg-stress-body"></tbody>
+                </table>
+            </div>
+            <p id="avg-stress-placeholder" class="text-gray-600 text-center p-8">Run analysis to see results.</p>
+        </section>
+
+        <section id="concatenation-module-section" class="card hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="card-title mb-0">4. Concatenation Module</h2>
+                <button id="copy-concat-btn" class="btn-primary">Copy Output</button>
+            </div>
+            <button id="generate-concatenation-btn" class="w-full btn-warning py-3 text-lg font-semibold mb-6">
+                Generate Formatted Output
+            </button>
+
+            <h3 class="font-semibold text-gray-300 mb-3">Preview</h3>
+            <div class="data-grid-container max-h-96">
+                <table class="data-grid">
+                    <thead>
+                        <tr>
+                            <th>Solid</th>
+                            <th>F (abs)</th>
+                            <th>G (abs)</th>
+                            <th>H (abs)</th>
+                            <th>Add'l 1</th>
+                            <th>Add'l 2</th>
+                            <th>Add'l 3</th>
+                            <th>Concatenated Line</th>
+                        </tr>
+                    </thead>
+                    <tbody id="concat-preview-body"></tbody>
+                </table>
+            </div>
+            <p id="concat-preview-placeholder" class="text-gray-600 text-center p-8">Generate output to see preview.</p>
+        </section>
+    </div>
+</div>
