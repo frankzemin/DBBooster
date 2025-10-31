@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBbooster - S2K Formatter</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS (xlsx.full.min.js) - Kept in case future features need it -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* --- DARK MODE THEME --- */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* gray-900 */
+            color: #d1d5db; /* gray-300 */
+        }
+        
+        /* Custom input styles for clarity */
+        .config-input, .config-select {
+            border: 1px solid #4b5563; /* gray-600 */
+            background-color: #374151; /* gray-700 */
+            color: #f3f4f6; /* gray-100 */
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Styles for invalid inputs */
+        .config-input.invalid, .data-grid td.invalid {
+            border-color: #f87171; /* red-400 */
+            background-color: #450a0a; /* dark-red-900 */
+            outline: 1px solid #f87171;
+            color: #fecaca; /* red-200 */
+        }
+        .data-grid td.invalid:focus {
+             box-shadow: inset 0 0 0 2px #f87171;
+        }
+
+        /* Custom tab styles */
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+            transition: border-color 0.3s, color 0.3s;
+        }
+        .tab-btn.active {
+            border-bottom-color: #60a5fa; /* blue-400 */
+            color: #60a5fa; /* blue-400 */
+            font-weight: 600;
+        }
+        
+        /* Tab styles for the inspection panel */
+        .inspect-tab-btn {
+            border: 1px solid #374151; /* gray-700 */
+            border-bottom: 0;
+            background-color: #1f2937; /* gray-800 */
+            color: #9ca3af; /* gray-400 */
+            margin-bottom: -1px;
+            border-radius: 6px 6px 0 0;
+        }
+        .inspect-tab-btn:hover {
+            background-color: #374151; /* gray-700 */
+            color: #d1d5db; /* gray-300 */
+        }
+        .inspect-tab-btn.active {
+            background-color: #1f2937; /* gray-800 (pane color) */
+            border-color: #374151; /* gray-700 */
+            border-bottom-color: #1f2937; /* gray-800 (pane color) */
+            font-weight: 600;
+            color: #60a5fa; /* blue-400 */
+        }
+
+        /* Top-level App Tab Styles */
+        .app-tab-btn {
+            padding: 0.75rem 1.5rem; /* py-3 px-6 */
+            font-size: 1rem; /* text-base */
+            font-weight: 600; /* font-semibold */
+            border-radius: 6px 6px 0 0;
+            border: 1px solid transparent;
+            border-bottom: 0;
+            cursor: pointer;
+            background-color: #374151; /* gray-700 */
+            color: #9ca3af; /* gray-400 */
+            margin-bottom: -1px; /* Overlap the border-b */
+        }
+        .app-tab-btn.active {
+            background-color: #1f2937; /* gray-800 */
+            color: #60a5fa; /* blue-400 */
+            border-color: #374151; /* gray-700 */
+        }
+        .interface-pane {
+            border-top: 1px solid #374151; /* gray-700 */
+            background-color: #1f2937; /* gray-800 */
+        }
+
+        /* Dragging highlight */
+        .dragging {
+            opacity: 0.5;
+            background: #422006; /* dark-yellow */
+            border: 2px dashed #60a5fa;
+        }
+
+        /* Data Grid Styles */
+        .data-grid-container { 
+            width: 100%; 
+            overflow: auto; 
+            max-height: 500px; 
+            border: 1px solid #4b5563; /* gray-600 */
+            border-radius: 0.375rem; 
+        }
+        .data-grid { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+        .data-grid th, .data-grid td { 
+            border: 1px solid #374151; /* gray-700 */
+            padding: 0.5rem 0.75rem; 
+            text-align: left; 
+            white-space: nowrap; 
+            color: #d1d5db; /* gray-300 */
+        }
+        .data-grid th { 
+            background-color: #111827; /* gray-900 */ 
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            user-select: none; 
+            min-width: 200px; 
+            color: #e5e7eb; /* gray-200 */
+        }
+        .data-grid th.header-drag-target { cursor: move; }
+        
+        /* Highlighting for selected source headers */
+        .data-grid th.source-grid-header.selected {
+            background-color: #1e3a8a; /* blue-900 */
+            border-left-color: #3b82f6; /* blue-500 */
+            border-right-color: #3b82f6; /* blue-500 */
+        }
+
+        .data-grid th.source-grid-header { cursor: default; }
+        .data-grid th.source-grid-header .source-header-content { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; }
+        .data-grid th.source-grid-header .form-checkbox { height: 1rem; width: 1rem; }
+        .data-grid th .config-group { font-size: 0.75rem; font-weight: normal; display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+        .data-grid th .config-group label { display: flex; align-items: center; justify-content: space-between; }
+        .data-grid th .config-group .config-input, .data-grid th .config-group .config-select { font-size: 0.75rem; padding: 2px 4px; width: 100px; }
+        .data-grid th .config-group .col-name-input { width: 100%; font-size: 0.875rem; font-weight: 600; padding: 2px 4px; }
+        .data-grid th .config-group .calc-input { width: 100%; font-size: 0.75rem; padding: 2px 4px; }
+        .data-grid th .config-group .calc-select { width: 100%; font-size: 0.75rem; padding: 2px 4px; }
+        .data-grid th .col-header-content { display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; }
+        .data-grid th .col-remove-btn { 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            color: #f87171; /* red-400 */
+            cursor: pointer; 
+            padding: 0 4px; 
+            border-radius: 4px; 
+        }
+        .data-grid th .col-remove-btn:hover { background-color: #7f1d1d; /* red-900 */ }
+        .data-grid td[contenteditable="true"] { background-color: #2a271c; outline: none; }
+        .data-grid td[contenteditable="true"]:focus { 
+            background-color: #1f2937; /* gray-800 */
+            box-shadow: inset 0 0 0 2px #3b82f6; /* blue-500 */
+        }
+        .header-drag-over { background-color: #1e40af; /* blue-800 */ }
+        
+        /* Substitution row styles */
+        .sub-row { display: flex; gap: 4px; align-items: center; margin-bottom: 2px; }
+        .sub-row input { width: 60px; font-size: 0.75rem; padding: 2px 4px; }
+        .sub-row span { font-size: 0.75rem; color: #d1d5db; /* gray-300 */ }
+        .sub-row .sub-remove-btn { 
+            cursor: pointer; 
+            color: #f87171; /* red-400 */
+            font-weight: bold; 
+            font-size: 1rem; 
+            padding: 0 4px; 
+            border-radius: 4px; 
+        }
+        .sub-row .sub-remove-btn:hover { background-color: #7f1d1d; /* red-900 */ }
+        
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto bg-gray-800 rounded-lg shadow-xl overflow-hidden border border-gray-700">
+        <!-- Header Removed -->
+
+        <!-- Top-Level App Tabs (Simplified) -->
+        <div class="px-6 pt-4 bg-gray-800">
+            <div class="flex space-x-1">
+                <button id="app-tab-modelConfig" class="app-tab-btn active">Model Configuration</button>
+            </div>
+        </div>
+
+        <!-- Model Configuration Interface (Now the only interface) -->
+        <div id="interface-modelConfig" class="interface-pane">
+            <div class="grid grid-cols-1 gap-0">
+                <!-- Step 1: Load Source Data -->
+                <div class="p-6 border-b border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">1. Load Source Data</h2>
+                    <textarea id="s2k-input-modelConfig" class="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm shadow-inner bg-gray-900 text-gray-200" placeholder="Paste S2K..."></textarea>
+                    <div class="flex justify-between items-center my-3">
+                        <label for="file-upload-modelConfig" class="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Upload S2K</label>
+                        <input type="file" id="file-upload-modelConfig" class="hidden" accept=".s2k,.txt,.asc,.csv">
+                        <button id="clear-data-btn-modelConfig" class="bg-gray-600 text-gray-100 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition">Clear</button>
+                    </div>
+                    <div class="my-6">
+                        <h3 class="font-semibold mb-2 text-gray-300">Delimiter(s) <span class="text-xs font-normal text-gray-400">(data lines)</span></h3>
+                        <div id="delimiter-options-modelConfig" class="flex flex-wrap gap-x-6 gap-y-2">
+                            <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="delim-space-modelConfig" value=" " class="form-checkbox h-5 w-5 text-blue-500 rounded" checked> <span class="text-gray-300">Space</span></label>
+                            <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="delim-equal-modelConfig" value="=" class="form-checkbox h-5 w-5 text-blue-500 rounded" checked> <span class="text-gray-300">Equals (=)</span></label>
+                            <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="delim-comma-modelConfig" value="," class="form-checkbox h-5 w-5 text-blue-500 rounded"> <span class="text-gray-300">Comma (,)</span></label>
+                        </div>
+                    </div>
+                    <button id="parse-btn-modelConfig" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-green-700 transition shadow-lg">Parse S2K File</button>
+                </div>
+                
+                <!-- Step 2: Inspect & Edit Source Tables -->
+                <div class="p-6 border-b border-gray-700">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">2. Inspect & Edit Source Tables</h2>
+                    <p class="text-sm text-gray-400 mb-4">DBLEAVES columns are selected automatically. Use the 'Convert' button in the Joint Restraints tab as needed.</p>
+                    <div class="flex border-b border-gray-700 mb-4">
+                        <div id="inspect-tabs-nav-modelConfig" class="flex space-x-1"></div>
+                    </div>
+                    <div id="inspect-tabs-content-modelConfig"></div>
+                </div>
+                
+                <!-- Step 3: Format Builder & Output -->
+                <div class="p-6 bg-gray-900">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-200">3. Format Builder & Output</h2>
+                    <div class="flex border-b border-gray-700 mb-4">
+                        <div id="format-tabs-nav-modelConfig" class="flex space-x-4"></div>
+                        <button id="add-tab-btn-modelConfig" class="ml-4 text-blue-400 hover:text-blue-300 font-bold text-lg" title="Add New Format Tab">+</button>
+                    </div>
+                    <div id="format-tabs-content-modelConfig"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-5 py-3 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 z-50">
+        <span id="toast-message"></span>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- STATE MANAGEMENT (Simplified) ---
+            let globalState = {
+                interfaces: {
+                    modelConfig: createInitialState()
+                }
+            };
+            
+            // --- Constants ---
+            const RESTRAINT_COL_INDICES = [4, 6, 8, 10, 12, 14]; // RX, RZ, Col9, Col11, Col13, Col15
+
+            /**
+             * Creates a default state object for Model Configuration
+             */
+            function createInitialState() {
+                return {
+                    rawData: "", delimiters: [],
+                    tableSchemas: {
+                        jointCoordinates: { key: 'jointCoordinates', name: 'JOINT COORDINATES', headers: ['Joint', 'X', 'Y', 'Z', 'C5', 'C6'] },
+                        connectivitySolid: { key: 'connectivitySolid', name: 'CONNECTIVITY - SOLID', headers: ['Solid', 'J1', 'J2', 'J3', 'J4', 'J5', 'J6', 'J7', 'J8'] },
+                        jointRestraints: { key: 'jointRestraints', name: 'JOINT RESTRAINT ASSIGNMENTS', headers: ['Joint', 'UX', 'UY', 'UZ', 'RX', 'RY', 'RZ'] },
+                        solidProperties: { key: 'solidProperties', name: 'SOLID PROPERTY ASSIGNMENTS', headers: ['Solid', 'Material'] }
+                    },
+                    tables: { jointCoordinates: [], connectivitySolid: [], jointRestraints: [], solidProperties: [] },
+                    editedSourceData: {}, activeInspectTab: 'jointCoordinates', sourceColumnSelections: {}, sourceSubstitutions: {},
+                    convertedSourceData: {}, 
+                    formats: [ { id: 1, name: "Node format", primaryBaseTable: "jointCoordinates", secondaryBaseTable: "jointRestraints", columns: [], editedData: {} }, { id: 2, name: "Element format", primaryBaseTable: "connectivitySolid", secondaryBaseTable: "solidProperties", columns: [], editedData: {} } ],
+                    activeFormatId: 1, nextFormatId: 3, draggedHeaderIndex: null,
+                };
+            }
+           
+            // --- CORE FUNCTIONS ---
+            
+            function initialize() {
+                const interfaceKey = 'modelConfig'; // Only one interface now
+
+                // Render initial ModelConfig state
+                renderInspectPanel(interfaceKey);
+                renderTabs(interfaceKey); 
+                renderActiveFormatTabContent(interfaceKey);
+
+                // Attach ModelConfig Listeners
+                attachModelConfigListeners(interfaceKey);
+            }
+
+            /**
+             * Attaches event listeners for MODEL CONFIGURATION interface
+             */
+            function attachModelConfigListeners(interfaceKey) {
+                document.getElementById(`file-upload-${interfaceKey}`)?.addEventListener('change', (e) => handleFileUpload(e, interfaceKey));
+                document.getElementById(`clear-data-btn-${interfaceKey}`)?.addEventListener('click', () => clearData(interfaceKey));
+                document.getElementById(`parse-btn-${interfaceKey}`)?.addEventListener('click', () => parseData(interfaceKey));
+                document.getElementById(`add-tab-btn-${interfaceKey}`)?.addEventListener('click', () => addNewFormatTab(interfaceKey));
+            }
+            
+            // --- START: ModelConfig Interface Functions ---
+            
+            // --- START: Format Tab Management (Step 3 Tabs) ---
+
+            /**
+             * Renders the navigation tabs for the Format Builder (Step 3).
+             */
+            function renderTabs(interfaceKey) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const nav = document.getElementById(`format-tabs-nav-${interfaceKey}`);
+                if (!nav) return;
+                
+                nav.innerHTML = "";
+                state.formats.forEach(format => {
+                    const btn = document.createElement('button');
+                    btn.className = `tab-btn py-2 px-4 text-sm font-medium ${state.activeFormatId === format.id ? 'active' : 'text-gray-400 hover:text-gray-300'}`;
+                    btn.textContent = format.name;
+                    btn.dataset.id = format.id;
+                    btn.addEventListener('click', (e) => switchFormatTab(interfaceKey, e));
+                    
+                    const span = document.createElement('span');
+                    span.innerHTML = "&nbsp;&nbsp;&times;";
+                    span.className = "text-red-500 hover:text-red-400 font-bold";
+                    span.title = "Delete tab";
+                    span.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteFormatTab(interfaceKey, format.id);
+                    });
+                    
+                    btn.addEventListener('dblclick', (e) => renameFormatTab(interfaceKey, e));
+                    btn.appendChild(span);
+                    nav.appendChild(btn);
+                });
+            }
+
+            /**
+             * Renders the content (buttons, grid, preview) for the active format tab.
+             */
+            function renderActiveFormatTabContent(interfaceKey) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const content = document.getElementById(`format-tabs-content-${interfaceKey}`);
+                if (!content) return;
+                
+                const format = state.formats.find(f => f.id === state.activeFormatId);
+                if (!format) {
+                    content.innerHTML = "<p class='text-red-400 p-4'>Error: No active format found.</p>";
+                    return;
+                }
+                
+                const formatId = format.id;
+                
+                // Build options for base table selectors
+                let baseTableOptions = '<option value="">-- Select --</option>';
+                Object.values(state.tableSchemas).forEach(schema => {
+                    const dataCount = state.tables[schema.key]?.length || 0;
+                    baseTableOptions += `<option value="${schema.key}">${schema.name} (${dataCount} rows)</option>`;
+                });
+                
+                content.innerHTML = `
+                    <div class="bg-gray-800 p-4 rounded-lg shadow-inner border border-gray-700">
+                        <!-- Base Table Selection -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="primary-base-select-${formatId}-${interfaceKey}" class="block text-sm font-medium text-gray-300 mb-1">Primary Base Table</label>
+                                <select id="primary-base-select-${formatId}-${interfaceKey}" class="config-select w-full">${baseTableOptions}</select>
+                            </div>
+                            <div>
+                                <label for="secondary-base-select-${formatId}-${interfaceKey}" class="block text-sm font-medium text-gray-300 mb-1">Secondary Base Table <span class="text-xs text-gray-500">(Optional)</span></label>
+                                <select id="secondary-base-select-${formatId}-${interfaceKey}" class="config-select w-full">${baseTableOptions}</select>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="flex flex-wrap gap-2 mb-4 border-b pb-4 border-gray-700">
+                            <button id="import-cols-btn-${formatId}-${interfaceKey}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">Import Selected Columns</button>
+                            <button id="add-calc-col-btn-${formatId}-${interfaceKey}" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition">Add Calculated Column</button>
+                            <button id="add-uniform-col-btn-${formatId}-${interfaceKey}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition">Add Uniform Column</button>
+                        </div>
+                        
+                        <!-- Format Grid -->
+                        <div id="grid-container-${formatId}-${interfaceKey}" class="data-grid-container mb-4">
+                            <table class="data-grid">
+                                <thead id="grid-head-${formatId}-${interfaceKey}"></thead>
+                                <tbody id="grid-body-${formatId}-${interfaceKey}"></tbody>
+                            </table>
+                            <div id="grid-placeholder-${formatId}-${interfaceKey}" class="p-4 text-center text-gray-400 italic"></div>
+                        </div>
+
+                        <!-- Preview -->
+                        <div>
+                            <h3 class="text-lg font-semibold mb-2 text-gray-200">Preview Output</h3>
+                            <textarea id="preview-output-${formatId}-${interfaceKey}" class="w-full h-64 p-3 border border-gray-600 rounded-lg font-mono text-sm shadow-inner bg-gray-900 text-gray-200" readonly placeholder="Preview will appear here..."></textarea>
+                            <button id="copy-preview-btn-${formatId}-${interfaceKey}" class="mt-2 bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition">Copy to Clipboard</button>
+                        </div>
+                    </div>
+                `;
+
+                // Set selected values for dropdowns
+                const primarySelect = document.getElementById(`primary-base-select-${formatId}-${interfaceKey}`);
+                const secondarySelect = document.getElementById(`secondary-base-select-${formatId}-${interfaceKey}`);
+                if (primarySelect) primarySelect.value = format.primaryBaseTable || "";
+                if (secondarySelect) secondarySelect.value = format.secondaryBaseTable || "";
+
+                // Attach listeners
+                primarySelect?.addEventListener('change', (e) => {
+                    format.primaryBaseTable = e.target.value || null;
+                    renderFormatGrid(interfaceKey, format);
+                });
+                secondarySelect?.addEventListener('change', (e) => {
+                    format.secondaryBaseTable = e.target.value || null;
+                    renderFormatGrid(interfaceKey, format);
+                });
+                
+                document.getElementById(`import-cols-btn-${formatId}-${interfaceKey}`)?.addEventListener('click', () => importSelectedColumns(interfaceKey, formatId));
+                document.getElementById(`add-calc-col-btn-${formatId}-${interfaceKey}`)?.addEventListener('click', () => addCalculatedColumn(interfaceKey, formatId));
+                document.getElementById(`add-uniform-col-btn-${formatId}-${interfaceKey}`)?.addEventListener('click', () => addUniformColumn(interfaceKey, formatId));
+
+                document.getElementById(`copy-preview-btn-${formatId}-${interfaceKey}`)?.addEventListener('click', () => {
+                    const preview = document.getElementById(`preview-output-${formatId}-${interfaceKey}`);
+                    if (preview && preview.value) {
+                        preview.select();
+                        try {
+                            // Using execCommand as clipboard API may fail in sandboxed iframes
+                            document.execCommand('copy');
+                            showToast("Copied to clipboard!", "success");
+                        } catch (err) {
+                            showToast("Failed to copy.", "error");
+                        }
+                    }
+                });
+
+                // Initial render of the grid
+                renderFormatGrid(interfaceKey, format);
+            }
+
+            function addNewFormatTab(interfaceKey, defaults = {}) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const newId = state.nextFormatId++; 
+                const newFormat = { 
+                    id: newId, 
+                    name: defaults.name || `Format ${newId}`, 
+                    primaryBaseTable: defaults.primaryBaseTable || null, 
+                    secondaryBaseTable: defaults.secondaryBaseTable || null, 
+                    columns: [], 
+                    editedData: {} 
+                }; 
+                state.formats.push(newFormat); 
+                state.activeFormatId = newId; 
+                renderTabs(interfaceKey); 
+                renderActiveFormatTabContent(interfaceKey); 
+            }
+            
+            function switchFormatTab(interfaceKey, event) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const newId = parseInt(event.target.dataset.id, 10); 
+                if (newId !== state.activeFormatId) { 
+                    state.activeFormatId = newId; 
+                    renderTabs(interfaceKey); 
+                    renderActiveFormatTabContent(interfaceKey); 
+                } 
+            }
+            
+            function renameFormatTab(interfaceKey, event) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const tabId = parseInt(event.target.dataset.id, 10); 
+                const format = state.formats.find(f => f.id === tabId); 
+                if (!format) return; 
+                const newName = prompt("Enter new name:", format.name); 
+                if (newName && newName.trim() !== "") { 
+                    format.name = newName.trim(); 
+                    renderTabs(interfaceKey); 
+                } 
+            }
+            
+            function deleteFormatTab(interfaceKey, tabId) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                if (state.formats.length <= 1) { 
+                    showToast("Cannot delete last tab.", "error"); 
+                    return; 
+                } 
+                if (confirm(`Delete "${state.formats.find(f => f.id === tabId).name}"?`)) { 
+                    state.formats = state.formats.filter(f => f.id !== tabId); 
+                    if (state.activeFormatId === tabId) { 
+                        state.activeFormatId = state.formats[0].id; 
+                    } 
+                    renderTabs(interfaceKey); 
+                    renderActiveFormatTabContent(interfaceKey); 
+                } 
+            }
+            
+            // --- END: Format Tab Management ---
+            
+            function handleFileUpload(event, interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const s2kInput = document.getElementById(`s2k-input-${interfaceKey}`); 
+                const file = event.target.files[0]; 
+                if (file) { 
+                    const reader = new FileReader(); 
+                    reader.onload = (e) => { 
+                        s2kInput.value = e.target.result; 
+                        state.rawData = e.target.result; 
+                    }; 
+                    reader.readAsText(file); 
+                } 
+            }
+            
+            function clearData(interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                // Reset state to initial
+                globalState.interfaces.modelConfig = createInitialState();
+                const state = globalState.interfaces[interfaceKey]; 
+                
+                document.getElementById(`s2k-input-${interfaceKey}`).value = ""; 
+                
+                renderInspectPanel(interfaceKey); 
+                renderTabs(interfaceKey);
+                renderActiveFormatTabContent(interfaceKey); 
+            }
+            
+            function resetParsedData(interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                state.tables = { jointCoordinates: [], connectivitySolid: [], jointRestraints: [], solidProperties: [] }; 
+                state.editedSourceData = {}; 
+                state.sourceColumnSelections = {}; 
+                state.sourceSubstitutions = {}; 
+                state.convertedSourceData = {}; 
+            }
+            
+            function parseData(interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                state.rawData = document.getElementById(`s2k-input-${interfaceKey}`).value; 
+                if (!state.rawData.trim()) { showToast("No data to parse.", "error"); return; } 
+                state.delimiters = []; 
+                document.querySelectorAll(`#delimiter-options-${interfaceKey} input[type="checkbox"]:checked`).forEach(cb => state.delimiters.push(cb.value)); 
+                if (state.delimiters.length === 0) { showToast("Select delimiter(s).", "error"); return; } 
+                const escapedDelimiters = state.delimiters.map(d => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); 
+                const regex = new RegExp(`[${escapedDelimiters.join('')}]+`); 
+                resetParsedData(interfaceKey); 
+                const lines = state.rawData.split('\n'); 
+                let currentTableKey = null; 
+                let dataLinesFound = 0; 
+                for (const line of lines) { 
+                    const trimmedLine = line.trim().toUpperCase(); 
+                    if (trimmedLine.length === 0) continue; 
+                    let foundHeader = false; 
+                    for (const key in state.tableSchemas) { 
+                        if (trimmedLine.includes(state.tableSchemas[key].name)) { 
+                            currentTableKey = key; 
+                            foundHeader = true; 
+                            break; 
+                        } 
+                    } 
+                    if (foundHeader) continue; 
+                    if (currentTableKey) { 
+                        // Check if line looks like a data line
+                        if (line.trim().match(/^[A-Z0-9"'-]/i)) { 
+                            state.tables[currentTableKey].push(line.split(regex).map(cell => cell.trim())); 
+                            dataLinesFound++; 
+                        } else { 
+                            // If line doesn't look like data, stop capturing for this table
+                            currentTableKey = null; 
+                        } 
+                    } 
+                } 
+                showToast(dataLinesFound === 0 ? "Parse complete, no S2K data found." : `Parse complete. Found ${dataLinesFound} lines.`, dataLinesFound === 0 ? "warning" : "success"); 
+                state.formats.forEach(f => f.editedData = {}); 
+                
+                selectAllDBLeavesColumns(interfaceKey); 
+                
+                // --- MODIFICATION: Automate Yes/No conversion on parse ---
+                autoConvertYesNo(interfaceKey, true); // Pass silent=true
+                
+                autoPopulateFormatColumns(interfaceKey);
+                
+                renderInspectPanel(interfaceKey); 
+                renderActiveFormatTabContent(interfaceKey); 
+            }
+            
+            function getColumnIndex(schema, colName) { let colIndex = schema.headers.indexOf(colName); if (colIndex === -1 && colName.startsWith('Col')) { const index = parseInt(colName.substring(3), 10) - 1; if (!isNaN(index) && index >= 0) colIndex = index; } return colIndex; }
+            
+            function selectAllDBLeavesColumns(interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                let totalSelectedCount = 0; 
+                Object.keys(state.tableSchemas).forEach(tableKey => { 
+                    totalSelectedCount += selectDBLeavesColumns(interfaceKey, tableKey); 
+                }); 
+                if (totalSelectedCount > 0) {
+                    showToast(`Auto-selected ${totalSelectedCount} DBLEAVES columns.`, "success"); 
+                }
+            }
+            
+            function selectDBLeavesColumns(interfaceKey, tableKey) { 
+                if (interfaceKey !== 'modelConfig') return 0;
+                const state = globalState.interfaces[interfaceKey]; 
+                const schema = state.tableSchemas[tableKey]; 
+                if (!schema) return 0; 
+                const dbLeavesSelections = { 
+                    jointCoordinates: ['Y', 'Col9', 'Col11', 'Col13'], 
+                    connectivitySolid: ['J2', 'J4', 'J6', 'J8', 'Col11', 'Col13', 'Col15', 'Col17', 'Col19'], 
+                    jointRestraints: ['RX', 'RZ', 'Col9', 'Col11', 'Col13', 'Col15'], 
+                    solidProperties: ['Col5'] 
+                }; 
+                const columnsToSelect = dbLeavesSelections[tableKey]; 
+                if (!columnsToSelect) return 0; 
+                let selectedCount = 0; 
+                columnsToSelect.forEach(item => { 
+                    const colIndex = getColumnIndex(schema, item); 
+                    if (colIndex !== -1) { 
+                        state.sourceColumnSelections[`${tableKey}_${colIndex}`] = true; 
+                        selectedCount++; 
+                    } 
+                }); 
+                return selectedCount; 
+            }
+
+            /**
+             * Automatically imports selected columns into their respective default formats.
+             */
+            function autoPopulateFormatColumns(interfaceKey) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                
+                state.formats.forEach(format => {
+                    // Only auto-populate if the grid is empty
+                    if (format.columns.length === 0) {
+                        // Temporarily set activeFormatId to this format to pass checks
+                        const originalActiveId = state.activeFormatId;
+                        state.activeFormatId = format.id;
+                        
+                        importSelectedColumns(interfaceKey, format.id, true); // Pass 'true' for silent mode
+                        
+                        // Restore activeFormatId
+                        state.activeFormatId = originalActiveId;
+                    }
+                });
+            }
+            
+            /**
+             * This function now stores the original value before converting.
+             * Added silent flag to suppress toast on initial parse.
+             */
+            function autoConvertYesNo(interfaceKey, silent = false) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const tableKey = 'jointRestraints';
+                const data = state.tables[tableKey];
+                if (!data || data.length === 0) {
+                    if (!silent) showToast("No Joint Restraint data to convert.", "info");
+                    return;
+                }
+                
+                let conversionCount = 0;
+                data.forEach((row, rowIndex) => {
+                    RESTRAINT_COL_INDICES.forEach(colIndex => {
+                        const cellKey = `${tableKey}_${rowIndex}_${colIndex}`;
+                        
+                        // If cell is already manually edited or converted, skip.
+                        if (state.editedSourceData[cellKey] !== undefined || state.convertedSourceData[cellKey] !== undefined) {
+                            return; // skip this cell
+                        }
+                        
+                        const originalValue = state.tables[tableKey]?.[rowIndex]?.[colIndex] ?? "";
+                        const lowerCurrentValue = originalValue.toLowerCase().trim();
+                        
+                        let newValue = null;
+                        if (lowerCurrentValue === 'yes') { newValue = '1'; } 
+                        else if (lowerCurrentValue === 'no') { newValue = '0'; }
+                        
+                        if (newValue !== null) {
+                            // Store the conversion
+                            state.convertedSourceData[cellKey] = { original: originalValue, converted: newValue };
+                            conversionCount++;
+                        }
+                    });
+                });
+
+                if (conversionCount > 0) {
+                    if (!silent) {
+                        showToast(`Converted ${conversionCount} 'Yes'/'No' values.`, "success");
+                        renderInspectPanel(interfaceKey); // Re-render to show new styles
+                        renderActiveFormatTabContent(interfaceKey); // Re-render to update downstream
+                    }
+                } else {
+                    if (!silent) showToast("No new 'Yes'/'No' values found to convert.", "info");
+                }
+            }
+
+            /**
+             * Restores original "Yes"/"No" values
+             */
+            function restoreOriginalYesNo(interfaceKey) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                
+                const restoreCount = Object.keys(state.convertedSourceData).length;
+                if (restoreCount === 0) {
+                    showToast("No values to restore.", "info");
+                    return;
+                }
+                
+                state.convertedSourceData = {};
+                showToast(`Restored ${restoreCount} original values.`, "success");
+                
+                renderInspectPanel(interfaceKey); // Re-render to show original values
+                renderActiveFormatTabContent(interfaceKey); // Re-render to update downstream
+            }
+
+
+            // --- START: Inspect Panel (Step 2) Rendering ---
+
+            function renderInspectPanel(interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const nav = document.getElementById(`inspect-tabs-nav-${interfaceKey}`); 
+                const content = document.getElementById(`inspect-tabs-content-${interfaceKey}`); 
+                if (!nav || !content) return; 
+                nav.innerHTML = ""; 
+                const keys = Object.keys(state.tableSchemas); 
+                if (!keys.includes(state.activeInspectTab)) { 
+                    state.activeInspectTab = keys[0] || 'jointCoordinates'; 
+                } 
+                Object.values(state.tableSchemas).forEach(schema => { 
+                    const btn = document.createElement('button'); 
+                    btn.className = `inspect-tab-btn py-2 px-4 text-sm font-medium ${state.activeInspectTab === schema.key ? 'active' : ''}`; 
+                    btn.textContent = schema.name; 
+                    btn.dataset.key = schema.key; 
+                    nav.appendChild(btn); 
+                }); 
+                nav.querySelectorAll('.inspect-tab-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+                    state.activeInspectTab = e.target.dataset.key; 
+                    renderInspectPanel(interfaceKey); 
+                })); 
+                content.innerHTML = ""; 
+                const pane = document.createElement('div'); 
+                pane.className = 'inspect-tab-pane p-4 border border-gray-700 border-t-0 rounded-b-lg rounded-tr-lg'; 
+                
+                if (state.activeInspectTab === 'jointRestraints') { 
+                    const convertBtn = document.createElement('button');
+                   convertBtn.id = `auto-convert-btn-${interfaceKey}`;
+                   convertBtn.className = 'bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition mb-4';
+                   convertBtn.innerHTML = `
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1.12-10.32a.75.75 0 00-1.24 0l-2.5 4.5a.75.75 0 001.24.69L9 12.18V14.5a.75.75 0 001.5 0v-2.32l.38.68a.75.75 0 001.24-.69l-2.5-4.5z" clip-rule="evenodd" />
+                       </svg>
+                       Auto Convert Yes/No
+                   `;
+                   convertBtn.addEventListener('click', () => autoConvertYesNo(interfaceKey));
+
+                   const restoreBtn = document.createElement('button');
+                   restoreBtn.id = `restore-original-btn-${interfaceKey}`;
+                   restoreBtn.className = 'bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-500 transition mb-4 ml-2';
+                   restoreBtn.innerHTML = `
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                         <path fill-rule="evenodd" d="M15.323 11.223a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 01-1.06-1.06l3.248-3.248H6.75a.75.75 0 010-1.5h6.26l-3.248-3.248a.75.75 0 011.06-1.06l4.5 4.5zM4.75 4.25a.75.75 0 000 1.5h8.5a.75.75 0 000-1.5h-8.5z" clip-rule="evenodd" />
+                       </svg>
+                       Restore Original
+                   `;
+                   restoreBtn.addEventListener('click', () => restoreOriginalYesNo(interfaceKey));
+
+                   pane.appendChild(convertBtn);
+                   pane.appendChild(restoreBtn);
+                } 
+                
+                pane.appendChild(createSourceGridContent(interfaceKey, state.activeInspectTab)); 
+                content.appendChild(pane); 
+            }
+            
+            /**
+             * Creates the data grid for the "Inspect" panel.
+             */
+            function createSourceGridContent(interfaceKey, tableKey) { 
+                if (interfaceKey !== 'modelConfig') return document.createTextNode("Error: Invalid interface key.");
+                const state = globalState.interfaces[interfaceKey]; 
+                const schema = state.tableSchemas[tableKey]; 
+                const data = state.tables[tableKey]; 
+                if (!schema) return document.createTextNode("Invalid schema."); 
+                if (!data || data.length === 0) { 
+                    const msg = document.createElement('p'); 
+                    msg.className = 'text-gray-400 italic p-4'; 
+                    msg.textContent = 'No data parsed.'; 
+                    return msg; 
+                } 
+                const container = document.createElement('div'); 
+                container.className = 'data-grid-container'; 
+                const table = document.createElement('table'); 
+                table.className = 'data-grid'; 
+                const thead = document.createElement('thead'); 
+                const trHead = document.createElement('tr'); 
+                const maxCols = Math.max(schema.headers.length, ...data.map(row => row?.length ?? 0)); 
+                
+                // thead loop
+                for (let i = 0; i < maxCols; i++) { 
+                    const th = document.createElement('th'); 
+                    th.className = 'source-grid-header'; 
+                    const colKey = `${tableKey}_${i}`; 
+                    const isSelected = !!state.sourceColumnSelections[colKey]; 
+                    
+                    if (isSelected) th.classList.add('selected');
+                    
+                    const headerContent = document.createElement('div'); 
+                    headerContent.className = 'source-header-content'; 
+                    const checkbox = document.createElement('input'); 
+                    checkbox.type = 'checkbox'; 
+                    checkbox.className = 'form-checkbox text-blue-500 rounded'; 
+                    checkbox.checked = isSelected; 
+                    checkbox.dataset.key = colKey; 
+                    checkbox.addEventListener('change', (e) => { 
+                        const key = e.target.dataset.key; 
+                        state.sourceColumnSelections[key] = e.target.checked; 
+                        th.classList.toggle('selected', e.target.checked);
+                    }); 
+                    const title = document.createElement('span'); 
+                    title.textContent = schema.headers[i] || `Col ${i + 1}`; 
+                    headerContent.appendChild(checkbox); 
+                    headerContent.appendChild(title); 
+                    const subContainer = document.createElement('div'); 
+                    subContainer.className = 'mt-2 space-y-1'; 
+                    (state.sourceSubstitutions[colKey] || []).forEach(sub => subContainer.appendChild(createSubRow(interfaceKey, colKey, sub.id, sub.find, sub.replace))); 
+                    const addSubBtn = document.createElement('button'); 
+                    addSubBtn.textContent = '+ Add Sub'; 
+                    addSubBtn.className = 'text-blue-400 hover:text-blue-300 text-xs font-medium mt-1'; 
+                    addSubBtn.dataset.key = colKey; 
+                    addSubBtn.addEventListener('click', (e) => { 
+                        const key = e.target.dataset.key; 
+                        const newId = Date.now(); 
+                        state.sourceSubstitutions[key] = state.sourceSubstitutions[key] || []; 
+                        state.sourceSubstitutions[key].push({ id: newId, find: "", replace: "" }); 
+                        e.target.previousElementSibling.appendChild(createSubRow(interfaceKey, key, newId, "", "")); 
+                    }); 
+                    th.appendChild(headerContent); 
+                    th.appendChild(subContainer); 
+                    th.appendChild(addSubBtn); 
+                    trHead.appendChild(th); 
+                } 
+                thead.appendChild(trHead); 
+                table.appendChild(thead); 
+                
+                // tbody loop
+                const tbody = document.createElement('tbody'); 
+                data.forEach((row, rowIndex) => { 
+                    const tr = document.createElement('tr'); 
+                    for (let i = 0; i < maxCols; i++) { 
+                        const td = document.createElement('td'); 
+                        const cellKey = `${tableKey}_${rowIndex}_${i}`; 
+                        const originalValue = row?.[i] ?? ""; 
+                        const editedValue = state.editedSourceData[cellKey]; 
+                        
+                        const conversion = state.convertedSourceData[cellKey];
+                        const currentValue = editedValue ?? conversion?.converted ?? originalValue;
+
+                        td.textContent = currentValue;
+                        td.contentEditable = "true"; 
+                        td.addEventListener('blur', (e) => handleSourceCellEdit(e, interfaceKey, tableKey, rowIndex, i)); 
+
+                        // Styling precedence
+                        if (editedValue !== undefined) { 
+                            td.style.backgroundColor = '#422006'; // dark-yellow
+                            td.style.fontStyle = 'italic'; 
+                        } else if (conversion !== undefined) {
+                            td.style.backgroundColor = '#1e3a8a'; // dark-blue
+                            td.style.fontStyle = 'italic';
+                            td.title = `Converted from "${conversion.original}"`;
+                        }
+                        tr.appendChild(td); 
+                    } 
+                    tbody.appendChild(tr); 
+                }); 
+                table.appendChild(tbody); 
+                container.appendChild(table); 
+                return container; 
+            }
+            
+            /**
+             * Creates a UI row for a Find/Replace substitution.
+             */
+            function createSubRow(interfaceKey, colKey, subId, findVal, replaceVal) {
+                const state = globalState.interfaces[interfaceKey];
+                const subRow = document.createElement('div');
+                subRow.className = 'sub-row';
+                
+                const findInput = document.createElement('input');
+                findInput.type = 'text';
+                findInput.className = 'config-input';
+                findInput.placeholder = 'Find';
+                findInput.value = findVal;
+                findInput.addEventListener('change', (e) => {
+                    const sub = state.sourceSubstitutions[colKey].find(s => s.id === subId);
+                    if (sub) sub.find = e.target.value;
+                });
+                
+                const arrow = document.createElement('span');
+                arrow.textContent = '→';
+                
+                const replaceInput = document.createElement('input');
+                replaceInput.type = 'text';
+                replaceInput.className = 'config-input';
+                replaceInput.placeholder = 'Replace';
+                replaceInput.value = replaceVal;
+                replaceInput.addEventListener('change', (e) => {
+                    const sub = state.sourceSubstitutions[colKey].find(s => s.id === subId);
+                    if (sub) sub.replace = e.target.value;
+                });
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'sub-remove-btn';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.title = 'Remove Substitution';
+                removeBtn.addEventListener('click', () => {
+                    state.sourceSubstitutions[colKey] = state.sourceSubstitutions[colKey].filter(s => s.id !== subId);
+                    subRow.remove();
+                });
+                
+                subRow.appendChild(findInput);
+                subRow.appendChild(arrow);
+                subRow.appendChild(replaceInput);
+                subRow.appendChild(removeBtn);
+                
+                return subRow;
+            }
+            
+            function handleSourceCellEdit(event, interfaceKey, tableKey, rowIndex, colIndex) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                
+                if (!state.tables || !state.tables[tableKey] || !state.tables[tableKey][rowIndex]) {
+                     event.target.textContent = '';
+                     showToast("Parse S2K data before editing.", "warning");
+                     return; 
+                }
+                
+                const cellKey = `${tableKey}_${rowIndex}_${colIndex}`;
+                let newValue = event.target.textContent.trim();
+                const originalValue = state.tables[tableKey]?.[rowIndex]?.[colIndex] ?? ""; 
+                
+                // If this cell was previously converted, remove the conversion.
+                // The manual edit now takes precedence.
+                if (state.convertedSourceData[cellKey] !== undefined) {
+                    delete state.convertedSourceData[cellKey];
+                }
+
+                event.target.classList.remove('invalid');
+                event.target.textContent = newValue; 
+
+                if (newValue === originalValue) {
+                    delete state.editedSourceData[cellKey];
+                    event.target.style.backgroundColor = '';
+                    event.target.style.fontStyle = '';
+                } else {
+                    state.editedSourceData[cellKey] = newValue;
+                    event.target.style.backgroundColor = '#422006'; // dark-yellow
+                    event.target.style.fontStyle = 'italic';
+                }
+                
+                // Selectively update only the affected row in the active format grid and the preview.
+                const format = state.formats.find(f => f.id === state.activeFormatId);
+                if (format) {
+                    updateAffectedFormatCells(interfaceKey, tableKey, rowIndex, colIndex, format);
+                    updatePreview(interfaceKey, format.id);
+                }
+            }
+            
+            // --- END: Inspect Panel (Step 2) Rendering ---
+
+            // --- START: Format Builder (Step 3) Core Logic ---
+
+            /**
+             * Selectively updates a single row in the format grid
+             * when a dependent cell in the source grid (Step 2) is edited.
+             */
+            function updateAffectedFormatCells(interfaceKey, tableKey, rowIndex, colIndex, format) {
+                const state = globalState.interfaces[interfaceKey];
+                const gridBody = document.getElementById(`grid-body-${format.id}-${interfaceKey}`);
+                if (!gridBody || !gridBody.rows[rowIndex]) return;
+                
+                const row = gridBody.rows[rowIndex];
+                const primaryRef = (format.primaryBaseTable === tableKey) ? 'primary' : null;
+                const secondaryRef = (format.secondaryBaseTable === tableKey) ? 'secondary' : null;
+
+                format.columns.forEach((col, cIdx) => {
+                    let isAffected = false;
+
+                    // Check if a source column is affected
+                    if (col.type === 'source' && col.source.table === tableKey && col.source.colIndex == colIndex) {
+                        isAffected = true;
+                    }
+                    // Check if a calculated column is affected
+                    else if (col.type === 'calculated' && col.calcRefCol) {
+                        const [refType, refIdx] = col.calcRefCol.split('_');
+                        if (refType === primaryRef && refIdx == colIndex) {
+                            isAffected = true;
+                        } else if (refType === secondaryRef && refIdx == colIndex) {
+                            isAffected = true;
+                        }
+                    }
+
+                    // If this column depends on the edited cell, re-render it
+                    if (isAffected) {
+                        const td = row.cells[cIdx];
+                        const val = getGridCellValue(col, format, rowIndex, cIdx, interfaceKey);
+                        const { formattedValue, error } = applyFormat(val, col.format);
+                        
+                        td.textContent = formattedValue;
+                        styleFormatCell(td, col, rowIndex, cIdx, interfaceKey, format, error);
+                    }
+                });
+            }
+
+
+            /**
+             * Centralizes cell styling for the format grid.
+             * Applies styles for invalid/error states, Step 3 overrides, and Step 2 edits.
+             */
+            function styleFormatCell(td, col, rIdx, cIdx, interfaceKey, format, validationError) {
+                const state = globalState.interfaces[interfaceKey];
+                
+                // Reset styles
+                td.style.backgroundColor = '';
+                td.style.fontStyle = '';
+                td.classList.remove('invalid');
+                td.title = '';
+
+                // Apply validation error style first
+                if (validationError) {
+                    td.classList.add('invalid');
+                }
+
+                let fmtKey, srcKey;
+
+                if (col.type === 'calculated') {
+                    fmtKey = `${rIdx}_calculated_${cIdx}`;
+                } else if (col.type === 'uniform') {
+                    fmtKey = `${rIdx}_uniform_${cIdx}`;
+                } else {
+                    const { table, colIndex } = col.source;
+                    srcKey = `${table}_${rIdx}_${colIndex}`;
+                    fmtKey = `${rIdx}_${table}_${colIndex}`;
+                }
+
+                // Style for Step 3 override (highest priority)
+                if (format.editedData[fmtKey] !== undefined) {
+                    td.style.backgroundColor = '#1e40af'; // dark-blue-800
+                    td.style.fontStyle = 'italic';
+                } 
+                // Style for Step 2 edit dependency (second priority)
+               else if (col.type === 'source') {
+                   // srcKey is already defined
+                   
+                   // 1. Check for manual edit (highest precedence)
+                   if (state.editedSourceData[srcKey] !== undefined) {
+                       td.style.backgroundColor = '#422006'; // dark-yellow
+                       td.style.fontStyle = 'italic';
+                   }
+                   // 2. Check for conversion
+                   else {
+                       const conversion = state.convertedSourceData[srcKey];
+                       if (conversion !== undefined) {
+                           td.style.backgroundColor = '#1e3a8a'; // dark-blue-900
+                           td.style.fontStyle = 'italic';
+                           td.title = `Converted from "${conversion.original}"`;
+                       }
+                   }
+                }
+            }
+
+            function handleFormatCellEdit(event, interfaceKey, formatId, rowIndex, sourceTable, sourceColIndex) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const format = state.formats.find(f => f.id === formatId); 
+                if (!format) return; 
+                
+                // Find the column object
+                let col, colIndex;
+                if (sourceTable === 'calculated' || sourceTable === 'uniform') {
+                    colIndex = sourceColIndex;
+                    col = format.columns[colIndex];
+                } else {
+                    col = format.columns.find(c => c.type === 'source' && c.source.table === sourceTable && c.source.colIndex === sourceColIndex);
+                    colIndex = format.columns.indexOf(col);
+                }
+                if (!col) return; // Column not found
+
+                const newValue = event.target.textContent.trim(); 
+                let cellKey, originalValue; 
+                
+                if (sourceTable === 'calculated') { 
+                    cellKey = `${rowIndex}_calculated_${colIndex}`; 
+                    originalValue = evaluateFormula(col, format, rowIndex, interfaceKey); 
+                } else if (sourceTable === 'uniform') { 
+                    cellKey = `${rowIndex}_uniform_${colIndex}`; 
+                    originalValue = col.value; 
+                } else { 
+                    cellKey = `${rowIndex}_${sourceTable}_${sourceColIndex}`; 
+                    originalValue = getResolvedValue(interfaceKey, sourceTable, rowIndex, sourceColIndex);
+                } 
+                
+                // Get the raw value for formatting validation
+                let rawValue = newValue;
+                
+                if (newValue === originalValue) { 
+                    delete format.editedData[cellKey]; 
+                    // If deleting an override, get the underlying value for validation
+                    rawValue = getGridCellValue(col, format, rowIndex, colIndex, interfaceKey);
+                } else { 
+                    format.editedData[cellKey] = newValue; 
+                } 
+                
+                // Re-validate and re-style the cell after editing
+                // We use rawValue to check if the new value (or restored original) is valid
+                const { formattedValue: validatedFormattedValue, error } = applyFormat(rawValue, col.format);
+                
+                // If the user's edit was valid, but not identical to the formatted string,
+                // keep the user's value. But if it was invalid, show the error.
+                if (error) {
+                    event.target.textContent = rawValue; // Show the original (invalid) value
+                    styleFormatCell(event.target, col, rowIndex, colIndex, interfaceKey, format, true);
+                } else {
+                    // If user types '1' but format is '00000', the formattedValue is '00000'.
+                    // The override in editedData stores '1'.
+                    // Here, we want to show the *formatted* value of the override.
+                    const { formattedValue: finalFormattedValue, error: finalError } = applyFormat(newValue, col.format);
+                    event.target.textContent = finalFormattedValue;
+                    styleFormatCell(event.target, col, rowIndex, colIndex, interfaceKey, format, finalError);
+                }
+
+                updatePreview(interfaceKey, formatId); 
+            }
+            
+            function applySubstitutions(value, substitutions) { 
+                if (!substitutions || substitutions.length === 0) return value; 
+                const trimmedValue = value.toString().trim(); 
+                for (const sub of substitutions) { 
+                    if (sub.find.trim() === "") continue; // Don't replace empty string
+                    if (trimmedValue === sub.find) return sub.replace; 
+                } 
+                return value; 
+            }
+            
+            /**
+             * Updates a column's configuration when its header controls are changed.
+             */
+            function updateColumnConfig(interfaceKey, formatId, colIndex, key, value) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const format = state.formats.find(f => f.id === formatId);
+                if (!format || !format.columns[colIndex]) return;
+                
+                // Ensure numeric values for spaces
+                if (key === 'spacesBefore') {
+                    value = parseInt(value, 10) || 0;
+                }
+                
+                format.columns[colIndex][key] = value;
+                
+                // Re-render the grid and preview to reflect changes
+                renderFormatGrid(interfaceKey, format);
+            }
+
+            /**
+             * Removes a column from the format.
+             */
+            function removeColumn(interfaceKey, formatId, colIndex) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const format = state.formats.find(f => f.id === formatId);
+                if (!format || !format.columns[colIndex]) return;
+                
+                format.columns.splice(colIndex, 1);
+                
+                // Re-render
+                renderFormatGrid(interfaceKey, format);
+            }
+            
+            function addCalculatedColumn(interfaceKey, formatId) { 
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey]; 
+                const format = state.formats.find(f => f.id === formatId); 
+                if (!format) return; 
+                if (!format.primaryBaseTable) { showToast("Select Primary Base first.", "error"); return; } 
+                const count = format.columns.filter(c => c.type === 'calculated').length + 1; 
+                let ref = ""; 
+                if (format.secondaryBaseTable === 'solidProperties') { 
+                    // Try to find the 'Material' column (index 1) or Col 5 (index 4)
+                    const schema = state.tableSchemas.solidProperties;
+                    const matIdx = getColumnIndex(schema, 'Material'); // 1
+                    const col5Idx = getColumnIndex(schema, 'Col5'); // 4
+                    
+                    if (col5Idx !== -1) {
+                         ref = `secondary_${col5Idx}`;
+                         showToast("Defaulting Calc Ref to Col 5 (Solid Props).", "info"); 
+                    } else if (matIdx !== -1) {
+                         ref = `secondary_${matIdx}`;
+                         showToast("Defaulting Calc Ref to Material (Solid Props).", "info"); 
+                    }
+                } 
+                const col = { 
+                    type: 'calculated', name: `Calc ${count}`, 
+                    calcFunction: 'if',
+                    calcRefCol: ref, calcCompareVal: '', calcOrVal: '', calcTrueVal: '', calcFalseVal: '', 
+                    spacesBefore: 0, format: 'none' 
+                }; 
+                format.columns.push(col); 
+                renderFormatGrid(interfaceKey, format); 
+            }
+
+            /**
+             * Adds a new uniform column to the format.
+             */
+            function addUniformColumn(interfaceKey, formatId) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const format = state.formats.find(f => f.id === formatId);
+                if (!format) return;
+                if (!format.primaryBaseTable) { showToast("Select Primary Base first.", "error"); return; }
+                
+                const count = format.columns.filter(c => c.type === 'uniform').length + 1;
+                const col = {
+                    type: 'uniform',
+                    name: `Uniform ${count}`,
+                    value: '1',
+                    spacesBefore: 0,
+                    format: 'none'
+                };
+                format.columns.push(col);
+                renderFormatGrid(interfaceKey, format);
+            }
+            
+            function getResolvedValue(interfaceKey, tableKey, rowIndex, colIndex) { 
+                if (interfaceKey !== 'modelConfig') return "";
+                const state = globalState.interfaces[interfaceKey]; 
+                const cellKey = `${tableKey}_${rowIndex}_${colIndex}`; // Use this key for all lookups
+
+               // 1. Check for a manual edit first (highest priority)
+               const editedValue = state.editedSourceData[cellKey];
+               if (editedValue !== undefined) {
+                   // Manual edit exists. Apply substitutions to it and return.
+                   const colKey = `${tableKey}_${colIndex}`; 
+                   const subs = state.sourceSubstitutions[colKey] || []; 
+                   return applySubstitutions(editedValue, subs);
+               }
+
+               // 2. No manual edit. Check for a conversion.
+               const conversion = state.convertedSourceData[cellKey];
+               if (conversion !== undefined) {
+                   // Return the converted value. Do NOT apply substitutions.
+                   return conversion.converted;
+               }
+
+               // 3. No edit, no conversion. Get original value.
+               const originalValue = state.tables[tableKey]?.[rowIndex]?.[colIndex] ?? "";
+               
+               // 4. Apply substitutions to the original value.
+               const colKey = `${tableKey}_${colIndex}`; 
+               const subs = state.sourceSubstitutions[colKey] || []; 
+               return applySubstitutions(originalValue, subs); 
+            }
+            
+            function getGridCellValue(col, format, rowIndex, colIndex, interfaceKey) { 
+                if (interfaceKey !== 'modelConfig') return "";
+                const state = globalState.interfaces[interfaceKey]; 
+                if (col.type === 'calculated') { 
+                    const key = `${rowIndex}_calculated_${colIndex}`; 
+                    return format.editedData[key] ?? evaluateFormula(col, format, rowIndex, interfaceKey); 
+                } else if (col.type === 'uniform') { 
+                    const key = `${rowIndex}_uniform_${colIndex}`; 
+                    return format.editedData[key] ?? col.value; 
+                } else { 
+                    const { table, colIndex: srcIdx } = col.source; 
+                    const key = `${rowIndex}_${table}_${srcIdx}`; 
+                    return format.editedData[key] ?? getResolvedValue(interfaceKey, table, rowIndex, srcIdx);
+                } 
+            }
+            
+            /**
+             * Imports selected columns from Step 2 into the format grid in Step 3
+             */
+            function importSelectedColumns(interfaceKey, formatId, silent = false) {
+                 if (interfaceKey !== 'modelConfig') return;
+                 const state = globalState.interfaces[interfaceKey];
+                 const format = state.formats.find(f => f.id === formatId);
+                 if (!format || !format.primaryBaseTable) {
+                     if (!silent) showToast("Select Primary Base first.", "error");
+                     return;
+                 }
+                 const keys = Object.keys(state.sourceColumnSelections);
+                 if (keys.length === 0) {
+                     if (!silent) showToast("No columns selected.", "info");
+                     return;
+                 }
+                 const existingSourceKeys = new Set(
+                     format.columns
+                         .filter(c => c.type === 'source')
+                         .map(c => `${c.source.table}_${c.source.colIndex}`)
+                 );
+
+                 let addedCount = 0;
+                 let formatMessage = ""; 
+
+                 const relevantSelectedKeys = keys.filter(key => {
+                     const [table] = key.split('_');
+                     return state.sourceColumnSelections[key] && 
+                            !existingSourceKeys.has(key) &&       
+                            (table === format.primaryBaseTable || table === format.secondaryBaseTable); 
+                 });
+
+                 if (relevantSelectedKeys.length === 0) {
+                     if (!silent) showToast('No *new* selected columns match the current base tables.', "info");
+                     return;
+                 }
+                 
+                 relevantSelectedKeys.sort((a, b) => {
+                     const [tableA, idxA] = a.split('_');
+                     const [tableB, idxB] = b.split('_');
+                     if (tableA !== tableB) return tableA.localeCompare(tableB);
+                     return parseInt(idxA, 10) - parseInt(idxB, 10);
+                 });
+
+
+                 relevantSelectedKeys.forEach(key => {
+                     const [table, idxStr] = key.split('_');
+                     const idx = parseInt(idxStr, 10);
+                     let spaces = 0;
+                     let fmt = 'none';
+                     
+                     const schema = state.tableSchemas[table];
+                     const headerName = schema.headers[idx] || `Col${idx + 1}`;
+                     
+                     if (format.id === 1) { // Node Format rules
+                         formatMessage = " with default Node formatting";
+                         if (table === 'jointCoordinates') {
+                             if (headerName === 'Y') { spaces = 5; fmt = '00000'; } 
+                             else if (headerName === 'Col9') { spaces = 3; fmt = '000.000'; } 
+                             else if (headerName === 'Col11') { spaces = 3; fmt = 'cond_sign_3dec'; } 
+                             else if (headerName === 'Col13') { spaces = 3; fmt = 'cond_sign_3dec'; }
+                         } else if (table === 'jointRestraints') {
+                              if (headerName === 'RX') { spaces = 4; } // RX
+                         }
+                     } 
+                     else if (format.id === 2) { // Element Format rules
+                         formatMessage = " with default Element formatting";
+                         if (table === 'connectivitySolid') {
+                            const elementCols = ['J2', 'J4', 'J6', 'J8', 'Col11', 'Col13', 'Col15', 'Col17', 'Col19'];
+                            if (elementCols.includes(headerName)) {
+                                fmt = '00000';
+                            }
+                            if (headerName === 'J2') {
+                                spaces = 5;
+                            }
+                         }
+                         else if (table === 'solidProperties') {
+                            if (headerName === 'Col5') {
+                                // --- MODIFICATION: Use new format type, spaces are now handled by format ---
+                                fmt = 'pad_to_5_char';
+                                spaces = 0; // The format itself will add padding
+                            }
+                         }
+                     }
+
+                     // Add the source column first
+                     format.columns.push({
+                         type: 'source',
+                         source: { table: table, colIndex: idx },
+                         spacesBefore: spaces,
+                         format: fmt
+                     });
+                     addedCount++;
+                     
+                     // NOW, check if we need to add the extra columns
+                     if (format.id === 2 && table === 'solidProperties' && headerName === 'Col5') {
+                         
+                         // Add the new Calculated Column
+                         const calcCount = format.columns.filter(c => c.type === 'calculated').length + 1;
+                         const calcCol = { 
+                             type: 'calculated', name: `Calc ${calcCount}`, 
+                             calcFunction: 'if',
+                             calcRefCol: `secondary_${idx}`, // Reference 'Col 5'
+                             calcCompareVal: '', calcOrVal: '', calcTrueVal: '', calcFalseVal: '', 
+                             spacesBefore: 0, format: 'none' 
+                         };
+                         format.columns.push(calcCol);
+                         
+                         // Add the new Uniform Column
+                         const uniformCount = format.columns.filter(c => c.type === 'uniform').length + 1;
+                         const uniformCol = {
+                             type: 'uniform',
+                             name: `Uniform ${uniformCount}`,
+                             value: '1',
+                             spacesBefore: 0,
+                             format: 'none'
+                         };
+                         format.columns.push(uniformCol);
+                     }
+                 });
+
+                 if (addedCount > 0) {
+                     if (!silent) showToast(`Added ${addedCount} columns${formatMessage}.`, "success");
+                     if (!silent) {
+                        renderFormatGrid(interfaceKey, format);
+                     }
+                 }
+            }
+            
+            /**
+             * Enhanced applyFormat function with conditional sign formatting AND ERROR CHECKING
+             */
+            function applyFormat(value, formatType) {
+                let num, parts, integer, decimal;
+                
+                const pad = (intPart, len) => {
+                    const strPart = String(intPart);
+                    const neg = strPart.startsWith('-');
+                    const dig = neg ? strPart.substring(1) : strPart;
+                    const padDig = dig.padStart(len, '0');
+                    return neg ? `-${padDig}` : padDig;
+                };
+
+                // --- MODIFICATION: Added new format type ---
+                if (formatType === 'pad_to_5_char') {
+                    const strVal = String(value).trim();
+                    num = parseInt(strVal, 10);
+                    // Check for invalid number or non-numeric string that isn't empty
+                    if ((isNaN(num) && strVal !== "") || strVal.length > 5) {
+                        return { formattedValue: strVal, error: true };
+                    }
+                    // Valid number or empty string
+                    return { formattedValue: strVal, error: false };
+                }
+                
+                if (formatType === 'cond_sign_3dec') {
+                    num = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+                    if (isNaN(num)) return { formattedValue: value, error: true };
+                    
+                    parts = num.toFixed(3).split('.');
+                    decimal = parts[1] || '000';
+                    
+                    if (num < 0) {
+                        integer = pad(parts[0], 2);
+                    } 
+                    else {
+                        integer = pad(parts[0], 3);
+                    }
+                    return { formattedValue: `${integer}.${decimal}`, error: false };
+                }
+                
+                if (formatType === '00000') {
+                    num = parseInt(value.toString().replace(/[^0-9-]/g, ''), 10);
+                    if (isNaN(num)) return { formattedValue: value, error: true };
+                    const formatted = (num < 0 ? '-' : '') + Math.abs(num).toString().padStart(5, '0');
+                    return { formattedValue: formatted, error: false };
+                }
+                
+                if (formatType === '000.000') {
+                    num = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+                    if (isNaN(num)) return { formattedValue: value, error: true };
+                    parts = num.toFixed(3).split('.'); 
+                    integer = pad(parts[0], 3); 
+                    decimal = parts[1] || '000'; 
+                    return { formattedValue: `${integer}.${decimal}`, error: false };
+                }
+                
+                if (formatType === '00.000') {
+                    num = parseFloat(value.toString().replace(/[^0-9.-]/g, ''));
+                    if (isNaN(num)) return { formattedValue: value, error: true };
+                    parts = num.toFixed(3).split('.'); 
+                    let intLen = parts[0].startsWith('-') ? parts[0].length - 1 : parts[0].length;
+                    integer = pad(parts[0], intLen > 2 ? intLen : (parts[0].startsWith('-') ? 2 : 2)); 
+                    decimal = parts[1] || '000'; 
+                    return { formattedValue: `${integer}.${decimal}`, error: false };
+                }
+                
+                return { formattedValue: value.toString(), error: false };
+            }
+            
+            // Enhanced evaluateFormula function with if/or support
+            function evaluateFormula(col, format, rowIndex, interfaceKey) { 
+                const { calcRefCol, calcCompareVal, calcTrueVal, calcFalseVal, calcFunction, calcOrVal } = col; 
+                if (!calcRefCol) return ''; 
+                try { 
+                    const [type, idxStr] = calcRefCol.split('_'); 
+                    const idx = parseInt(idxStr); 
+                    if (isNaN(idx)) return '#REF!'; 
+                    const refKey = (type === 'secondary' && format.secondaryBaseTable) ? format.secondaryBaseTable : format.primaryBaseTable; 
+                    if (!refKey) return '#REF!'; 
+                    
+                    const refValue = getResolvedValue(interfaceKey, refKey, rowIndex, idx);
+                    
+                    // Handle if/or function
+                    if (calcFunction === 'if_or') {
+                        const compareValues = calcCompareVal.split(',').map(v => v.trim()).filter(v => v);
+                        const orValues = (calcOrVal || '').split(',').map(v => v.trim()).filter(v => v);
+                        
+                        const isMatch = compareValues.some(compareVal => refValue == compareVal) ||
+                                      orValues.some(orVal => refValue == orVal);
+                                      
+                        return isMatch ? calcTrueVal : calcFalseVal;
+                    }
+                    
+                    // Default "if" function (now also supports comma-separated list)
+                    const compareValues = calcCompareVal.split(',').map(v => v.trim()).filter(v => v);
+                    const isMatch = compareValues.some(compareVal => refValue == compareVal);
+                    
+                    return isMatch ? calcTrueVal : calcFalseVal; 
+                } catch (e) { 
+                    console.error("Formula Eval Error:", e);
+                    return '#ERROR!'; 
+                } 
+            }
+
+            // --- END: Advanced Formula/Format Block ---
+
+
+            // Enhanced renderFormatGrid function with conditional formatting support
+            function renderFormatGrid(interfaceKey, format) { 
+                const state = globalState.interfaces[interfaceKey]; 
+                const head = document.getElementById(`grid-head-${format.id}-${interfaceKey}`); 
+                const body = document.getElementById(`grid-body-${format.id}-${interfaceKey}`); 
+                const placeholder = document.getElementById(`grid-placeholder-${format.id}-${interfaceKey}`); 
+                if (!head || !body || !placeholder) return; 
+                head.innerHTML = ""; 
+                body.innerHTML = ""; 
+                const baseKey = format.primaryBaseTable; 
+                if (!baseKey) { 
+                    placeholder.classList.remove('hidden'); 
+                    placeholder.textContent = "Select Primary Base Table to begin."; 
+                    updatePreview(interfaceKey, format.id); 
+                    return; 
+                } 
+                if (format.columns.length === 0) { 
+                    placeholder.classList.remove('hidden'); 
+                    placeholder.textContent = 'Use "Import Selected Columns" or "Add" buttons to build your format.'; 
+                    updatePreview(interfaceKey, format.id); 
+                    return; 
+                } 
+                placeholder.classList.add('hidden'); 
+                
+                // Build calculation dropdown options
+                let calcOpts = '<option value="">-- Select --</option>'; 
+                const pSchema = state.tableSchemas[baseKey], pData = state.tables[baseKey]; 
+                if (pData?.length > 0) { 
+                    const max = Math.max(pSchema.headers.length, ...pData.map(r => r?.length ?? 0)); 
+                    calcOpts += `<optgroup label="Primary: ${pSchema.name}">`; 
+                    for (let i = 0; i < max; i++) calcOpts += `<option value="primary_${i}">Col ${i + 1}: ${pSchema.headers[i] || `Col ${i + 1}`}</option>`; 
+                    calcOpts += `</optgroup>`; 
+                } 
+                const sKey = format.secondaryBaseTable; 
+                if (sKey) { 
+                    const sSchema = state.tableSchemas[sKey], sData = state.tables[sKey]; 
+                    if (sData?.length > 0) { 
+                        const max = Math.max(sSchema.headers.length, ...sData.map(r => r?.length ?? 0)); 
+                        calcOpts += `<optgroup label="Second: ${sSchema.name}">`; 
+                        for (let i = 0; i < max; i++) calcOpts += `<option value="secondary_${i}">Col ${i + 1}: ${sSchema.headers[i] || `Col ${i + 1}`}</option>`; 
+                        calcOpts += `</optgroup>`; 
+                    } 
+                } 
+                
+                const trHead = head.insertRow(); 
+                format.columns.forEach((col, index) => { 
+                    const th = document.createElement('th'); 
+                    th.className = "header-drag-target"; // Class to mark as draggable
+                    th.draggable = true; 
+                    th.dataset.index = index; 
+                    th.addEventListener('dragstart', (e) => handleHeaderDragStart(e, interfaceKey, index)); 
+                    th.addEventListener('dragover', handleHeaderDragOver); 
+                    th.addEventListener('drop', (e) => handleHeaderDrop(e, interfaceKey, index)); 
+                    th.addEventListener('dragend', (e) => handleHeaderDragEnd(e, interfaceKey)); 
+                    
+                    // --- MODIFICATION: Added new format option ---
+                    let fmtOpts = `<option value="none" ${col.format === 'none' ? 'selected' : ''}>None</option>
+                                  <option value="00000" ${col.format === '00000' ? 'selected' : ''}>00000</option>
+                                  <option value="000.000" ${col.format === '000.000' ? 'selected' : ''}>000.000</option>
+                                  <option value="00.000" ${col.format === '00.000' ? 'selected' : ''}>00.000</option>
+                                  <option value="cond_sign_3dec" ${col.format === 'cond_sign_3dec' ? 'selected' : ''}>+/- 3 Dec (000.0/00.0)</option>
+                                  <option value="pad_to_5_char" ${col.format === 'pad_to_5_char' ? 'selected' : ''}>Pad to 5 Chars</option>`; 
+                                  
+                    let html = ''; 
+                    if (col.type === 'calculated') {
+                        html = `<div class="col-header-content">
+                                    <input type="text" class="config-input col-name-input" value="${col.name}">
+                                    <span class="col-remove-btn">&times;</span>
+                                </div>
+                                <div class="config-group">
+                                    <label>
+                                        <span>Function:</span>
+                                        <select class="config-select calc-function-select">
+                                            <option value="if" ${!col.calcFunction || col.calcFunction === 'if' ? 'selected' : ''}>If</option>
+                                            <option value="if_or" ${col.calcFunction === 'if_or' ? 'selected' : ''}>If/Or</option>
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>If:</span>
+                                        <select class="config-select calc-select calc-ref-col-input">${calcOpts}</select>
+                                    </label>
+                                    <label>
+                                        <span>Equals:</span>
+                                        <input type="text" class="config-input calc-input calc-compare-val-input" value="${col.calcCompareVal}" placeholder="Comp (val1,val2)">
+                                    </label>
+                                    <div class="if-or-section" ${col.calcFunction === 'if_or' ? '' : 'style="display:none;"'}>
+                                        <label>
+                                            <span>Or Equals:</span>
+                                            <input type="text" class="config-input calc-input calc-or-val-input" value="${col.calcOrVal || ''}" placeholder="Or (val1,val2)">
+                                        </label>
+                                    </div>
+                                    <label>
+                                        <span>Then:</span>
+                                        <input type="text" class="config-input calc-input calc-true-val-input" value="${col.calcTrueVal}" placeholder="True">
+                                    </label>
+                                    <label>
+                                        <span>Else:</span>
+                                        <input type="text" class="config-input calc-input calc-false-val-input" value="${col.calcFalseVal}" placeholder="False">
+                                    </label>
+                                    <hr class="my-1 border-gray-700">
+                                    <label>
+                                        <span>Spaces:</span>
+                                        <input type="number" class="config-input spaces-input" value="${col.spacesBefore}" min="0">
+                                    </label>
+                                    <label>
+                                        <span>Format:</span>
+                                        <select class="config-select format-select">${fmtOpts}</select>
+                                    </label>
+                                </div>`; 
+                    } else if (col.type === 'uniform') {
+                        html = `<div class="col-header-content">
+                                    <input type="text" class="config-input col-name-input" value="${col.name}">
+                                    <span class="col-remove-btn">&times;</span>
+                                </div>
+                                <div class="config-group">
+                                    <label>
+                                        <span>Value:</span>
+                                        <input type="text" class="config-input calc-input uniform-value-input" value="${col.value}" placeholder="Value">
+                                    </label>
+                                    <hr class="my-1 border-gray-700">
+                                    <label>
+                                        <span>Spaces:</span>
+                                        <input type="number" class="config-input spaces-input" value="${col.spacesBefore}" min="0">
+                                    </label>
+                                    <label>
+                                        <span>Format:</span>
+                                        <select class="config-select format-select">${fmtOpts}</select>
+                                    </label>
+                                </div>`; 
+                    } else { 
+                        const schema = state.tableSchemas[col.source.table]; 
+                        const name = schema.headers[col.source.colIndex] || `Col ${col.source.colIndex + 1}`; 
+                        html = `<div class="col-header-content">
+                                    <span>${schema.name}: <strong>${name}</strong></span>
+                                    <span class="col-remove-btn">&times;</span>
+                                </div>
+                                <div class="config-group">
+                                    <label>
+                                        <span>Spaces:</span>
+                                        <input type="number" class="config-input spaces-input" value="${col.spacesBefore}" min="0">
+                                    </label>
+                                    <label>
+                                        <span>Format:</span>
+                                        <select class="config-select format-select">${fmtOpts}</select>
+                                    </label>
+                                </div>`; 
+                    } 
+                    th.innerHTML = html; 
+                    if (col.type === 'calculated') { 
+                        th.querySelector('.col-name-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'name', e.target.value)); 
+                        if (col.calcRefCol) th.querySelector('.calc-ref-col-input').value = col.calcRefCol; 
+                        th.querySelector('.calc-ref-col-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'calcRefCol', e.target.value)); 
+                        th.querySelector('.calc-compare-val-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'calcCompareVal', e.target.value)); 
+                        
+                        const functionSelect = th.querySelector('.calc-function-select');
+                        if (functionSelect) {
+                            functionSelect.addEventListener('change', (e) => {
+                                updateColumnConfig(interfaceKey, format.id, index, 'calcFunction', e.target.value);
+                                const ifOrSection = th.querySelector('.if-or-section');
+                                if (ifOrSection) {
+                                    ifOrSection.style.display = e.target.value === 'if_or' ? 'block' : 'none';
+                                }
+                            });
+                        }
+                        
+                        th.querySelector('.calc-or-val-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'calcOrVal', e.target.value));
+                        th.querySelector('.calc-true-val-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'calcTrueVal', e.target.value)); 
+                        th.querySelector('.calc-false-val-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'calcFalseVal', e.target.value)); 
+                    } else if (col.type === 'uniform') { 
+                        th.querySelector('.col-name-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'name', e.target.value)); 
+                        th.querySelector('.uniform-value-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'value', e.target.value)); 
+                    } 
+                    th.querySelector('.spaces-input')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'spacesBefore', e.target.value)); 
+                    th.querySelector('.format-select')?.addEventListener('change', (e) => updateColumnConfig(interfaceKey, format.id, index, 'format', e.target.value)); 
+                    th.querySelector('.col-remove-btn')?.addEventListener('click', (e) => { e.stopPropagation(); removeColumn(interfaceKey, format.id, index); }); 
+                    trHead.appendChild(th); 
+                }); 
+                
+                // Render grid body
+                (state.tables[baseKey] || []).forEach((_, rIdx) => { 
+                    const tr = body.insertRow(); 
+                    format.columns.forEach((col, cIdx) => { 
+                        const td = tr.insertCell(); 
+                        
+                        const val = getGridCellValue(col, format, rIdx, cIdx, interfaceKey);
+                        const { formattedValue, error } = applyFormat(val, col.format);
+                        
+                        td.textContent = formattedValue; 
+                        td.contentEditable = "true"; 
+                        
+                        let eventTable, eventColIndex;
+                        
+                        if (col.type === 'calculated') { 
+                            eventTable = 'calculated';
+                            eventColIndex = cIdx;
+                        } else if (col.type === 'uniform') { 
+                            eventTable = 'uniform';
+                            eventColIndex = cIdx;
+                        } else { 
+                            eventTable = col.source.table;
+                            eventColIndex = col.source.colIndex;
+                        } 
+                        
+                        td.addEventListener('blur', (e) => handleFormatCellEdit(e, interfaceKey, format.id, rIdx, eventTable, eventColIndex)); 
+                        
+                        // Apply initial styling
+                        styleFormatCell(td, col, rIdx, cIdx, interfaceKey, format, error);
+                        
+                    }); 
+                }); 
+                updatePreview(interfaceKey, format.id); 
+            }
+            
+            /**
+             * Updates the text preview area based on the current format grid.
+             */
+            function updatePreview(interfaceKey, formatId) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const format = state.formats.find(f => f.id === formatId);
+                const preview = document.getElementById(`preview-output-${formatId}-${interfaceKey}`);
+                if (!format || !preview) return;
+                
+                const baseKey = format.primaryBaseTable;
+                if (!baseKey || !state.tables[baseKey] || state.tables[baseKey].length === 0) {
+                    preview.value = "";
+                    return;
+                }
+                
+                let output = "";
+                const rowCount = state.tables[baseKey].length;
+                
+                for (let rIdx = 0; rIdx < rowCount; rIdx++) {
+                    let line = "";
+                    format.columns.forEach((col, cIdx) => {
+                        let value = getGridCellValue(col, format, rIdx, cIdx, interfaceKey);
+                        let { formattedValue, error } = applyFormat(value, col.format);
+                        
+                        let spaces = "";
+                        
+                        // --- MODIFICATION: Handle dynamic spacing for pad_to_5_char ---
+                        if (col.format === 'pad_to_5_char') {
+                            if (error) {
+                                // Invalid value, pad with 5 spaces to maintain alignment
+                                spaces = " ".repeat((col.spacesBefore || 0) + 5);
+                                formattedValue = ""; // Don't print the invalid value
+                            } else {
+                                // Calculate padding to fill 5 chars, right-aligned
+                                const valueLength = formattedValue.length;
+                                const dynamicPadding = Math.max(0, 5 - valueLength);
+                                spaces = " ".repeat((col.spacesBefore || 0) + dynamicPadding);
+                            }
+                        } else {
+                            // Standard spacing
+                            spaces = " ".repeat(col.spacesBefore || 0);
+                        }
+                        
+                        line += (spaces + formattedValue);
+                    });
+                    output += line + "\n";
+                }
+                
+                preview.value = output;
+            }
+            
+            // --- END: Format Builder (Step 3) Core Logic ---
+
+            // --- START: Drag & Drop Column Handlers ---
+
+            function handleHeaderDragStart(e, interfaceKey, index) {
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                state.draggedHeaderIndex = index;
+                e.target.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            }
+
+            function handleHeaderDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const target = e.target.closest('th.header-drag-target');
+                if (target) {
+                    // Clear previous hovers
+                    target.parentNode.querySelectorAll('.header-drag-over').forEach(th => th.classList.remove('header-drag-over'));
+                    target.classList.add('header-drag-over');
+                }
+            }
+
+            function handleHeaderDrop(e, interfaceKey, dropIndex) {
+                e.preventDefault();
+                if (interfaceKey !== 'modelConfig') return;
+                const state = globalState.interfaces[interfaceKey];
+                const format = state.formats.find(f => f.id === state.activeFormatId);
+                
+                const dropTarget = e.target.closest('th.header-drag-target');
+                if (!dropTarget) return;
+                const actualDropIndex = parseInt(dropTarget.dataset.index, 10);
+                
+                if (format && state.draggedHeaderIndex !== null && state.draggedHeaderIndex !== actualDropIndex) {
+                    // Move item in array
+                    const [draggedItem] = format.columns.splice(state.draggedHeaderIndex, 1);
+                    format.columns.splice(actualDropIndex, 0, draggedItem);
+                    
+                    // Re-render
+                    renderFormatGrid(interfaceKey, format);
+                }
+                // Clean up drag state
+                handleHeaderDragEnd(e, interfaceKey);
+            }
+
+            function handleHeaderDragEnd(e, interfaceKey) {
+                if (globalState.interfaces.modelConfig) {
+                    globalState.interfaces.modelConfig.draggedHeaderIndex = null;
+                }
+                // Clear all visual indicators
+                document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+                document.querySelectorAll('.header-drag-over').forEach(el => el.classList.remove('header-drag-over'));
+            }
+
+            // --- END: Drag & Drop Column Handlers ---
+
+
+            // --- Toast Notification ---
+            let toastTimer; 
+            function showToast(message, type = "info") { 
+                const toast = document.getElementById('toast'); 
+                const msg = document.getElementById('toast-message'); 
+                if (!toast || !msg) return; 
+                
+                msg.textContent = message; 
+                
+                // Reset classes
+                toast.className = 'fixed bottom-5 right-5 text-white px-5 py-3 rounded-lg shadow-xl transition-opacity duration-300 opacity-100 z-50';
+                
+                const color = type === "success" ? 'bg-green-600' : 
+                              type === "error" ? 'bg-red-600' : 
+                              type === "warning" ? 'bg-orange-500' : 
+                              'bg-gray-900'; 
+                toast.classList.add(color); 
+                
+                clearTimeout(toastTimer); 
+                toastTimer = setTimeout(() => { 
+                    toast.classList.remove('opacity-100');
+                }, 3000); 
+            }
+            
+            // --- Initialize App ---
+            initialize();
+        });
+    </script>
+</body>
+</html>
+

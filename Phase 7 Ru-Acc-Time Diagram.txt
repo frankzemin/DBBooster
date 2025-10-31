@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ru-Acc-Time Diagram Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS (xlsx.full.min.js) for Excel file parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Load Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load Chart.js Annotation Plugin (Using jsdelivr CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom styles for the app */
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* Header styling */
+        header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Main content styling */
+        main {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 16px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            margin: 1.5rem;
+            padding: 1.5rem;
+            overflow: hidden;
+        }
+        
+        /* Section styling */
+        .import-section {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 12px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .import-section:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+        
+        .import-section h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Tabs styling */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid rgba(100, 116, 139, 0.3);
+            margin-bottom: 1.5rem;
+        }
+        .tab-button {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #94a3b8;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1; /* MODIFIED: Equal width */
+            justify-content: center; /* MODIFIED: Center content */
+        }
+        .tab-button:hover {
+            color: #e2e8f0;
+            background: rgba(100, 116, 139, 0.1);
+        }
+        .tab-button.active {
+            color: #60a5fa;
+            border-bottom-color: #60a5fa;
+        }
+        /* Specific active tab colors */
+        .tab-button.active.ru-tab { color: #3b82f6; border-bottom-color: #3b82f6; }
+        .tab-button.active.time-acc-tab { color: #f59e0b; border-bottom-color: #f59e0b; }
+        .tab-button.active.disp-tab { color: #10b981; border-bottom-color: #10b981; }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* File upload area styling */
+        .file-upload-area {
+            border: 2px dashed rgba(100, 116, 139, 0.5);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            background: rgba(15, 23, 42, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .file-upload-area:hover {
+            border-color: #3b82f6;
+            background: rgba(30, 64, 175, 0.2);
+        }
+        
+        .file-upload-area.drag-over {
+            border-color: #3b82f6;
+            background: rgba(30, 64, 175, 0.3);
+            transform: scale(1.02);
+        }
+        
+        .file-upload-area svg {
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+        
+        .file-upload-area p {
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .file-upload-area .font-medium {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        .file-upload-area .text-xs {
+            color: #64748b;
+        }
+
+        /* File list styling */
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+        .file-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            animation: fadeIn 0.3s;
+        }
+        .file-list-item-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            overflow: hidden;
+        }
+        .file-list-item-info i {
+            color: #94a3b8;
+        }
+        .file-list-item-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        .file-list-item-size {
+            font-size: 0.8rem;
+            color: #64748b;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+        .file-remove-btn {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .file-remove-btn:hover {
+            color: #dc2626;
+            transform: scale(1.1);
+        }
+        
+        /* Chart container styling */
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Performance metrics */
+        .perf-metrics {
+            font-size: 0.8rem;
+            color: #64748b;
+            text-align: right;
+            margin-top: -1rem;
+            margin-bottom: 1rem;
+            padding-right: 0.5rem;
+        }
+        .perf-metrics span {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        
+        /* Button styling */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(100, 116, 139, 0.3);
+            color: #e2e8f0;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(100, 116, 139, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(245, 158, 11, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Controls styling */
+        .controls-section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .controls-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .controls-header i {
+            transition: transform 0.3s ease;
+        }
+        .controls-content {
+            display: none;
+            padding-top: 1.5rem;
+        }
+        .controls-content.open {
+            display: block;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 350px;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        /* Form elements styling */
+        .form-input, .form-select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 6px;
+            color: #e2e8f0;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        /* NEW: Add custom select arrow */
+        .form-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .form-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .control-group {
+            margin-bottom: 1rem;
+        }
+        /* NEW */
+        .control-group h5 {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.7);
+            border-left-width: 4px;
+        }
+        .h5-time-acc { border-color: #f59e0b; color: #f59e0b; }
+        .h5-time-ru { border-color: #3b82f6; color: #3b82f6; }
+        .h5-time-disp { border-color: #10b981; color: #10b981; }
+
+
+        /* MODIFIED */
+        .dataset-control-item {
+            display: grid;
+            /* Checkbox, Label, Color, Style, Thickness, Opacity */
+            grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem; /* Re-add margin */
+        }
+        .dataset-control-item:hover {
+            background: rgba(51, 65, 85, 0.7);
+            border-color: rgba(96, 165, 250, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        /* MODIFIED */
+        .dataset-control-item .form-select {
+            padding-top: 0.25rem;
+            padding-bottom: 0.25rem;
+            min-width: 90px;
+        }
+        /* MODIFIED */
+        .dataset-control-item .form-input[type="color"] {
+            /* Overridden by custom class */
+            padding: 0;
+            min-width: 40px;
+        }
+        /* MODIFIED */
+        .dataset-control-item .form-input[type="range"] {
+            /* Overridden by custom class */
+            padding: 0;
+        }
+        /* MODIFIED */
+        .dataset-control-item label {
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* NEW: Custom Checkbox */
+        .custom-checkbox {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 2.5rem;
+            height: 1.25rem;
+            background-color: rgba(100, 116, 139, 0.5);
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0;
+        }
+        .custom-checkbox::before {
+            content: "";
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 0.125rem;
+            left: 0.125rem;
+            transition: all 0.3s ease;
+        }
+        .custom-checkbox:checked {
+            background-color: #3b82f6;
+        }
+        .custom-checkbox:checked::before {
+            transform: translateX(1.25rem);
+        }
+
+        /* NEW: Custom Color Input */
+        .custom-color-input {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 36px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .custom-color-input::-webkit-color-swatch-wrapper {
+            padding: 0;
+            border-radius: 6px;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            transition: border-color 0.3s ease;
+        }
+        .custom-color-input::-webkit-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+        .custom-color-input::-moz-color-swatch {
+            border: none;
+            border-radius: 5px;
+        }
+        .custom-color-input:hover::-webkit-color-swatch-wrapper {
+            border-color: #3b82f6;
+        }
+
+
+        /* NEW: Custom Range Slider */
+        .custom-range {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100px;
+            height: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 5px;
+            outline: none;
+            padding: 0;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            transition: box-shadow 0.3s ease;
+        }
+        .custom-range:hover {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        .custom-range::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #e2e8f0;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        .custom-range:hover::-webkit-slider-thumb { background: #fff; transform: scale(1.1); }
+        .custom-range:hover::-moz-range-thumb { background: #fff; transform: scale(1.1); }
+        .custom-range:active::-webkit-slider-thumb { background: #3b82f6; }
+        .custom-range:active::-moz-range-thumb { background: #3b82f6; }
+        
+        .custom-range::-webkit-slider-runnable-track {
+            height: 8px;
+            border-radius: 5px;
+        }
+        .custom-range::-moz-range-track {
+            height: 8px;
+            border-radius: 5px;
+        }
+
+
+        /* Key Findings Section */
+        .findings-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .findings-list h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-top: 1rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .findings-list ul {
+            padding-left: 0;
+        }
+        .findings-list li {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 0.75rem;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .findings-list li i {
+            position: absolute;
+            left: 0;
+            top: 5px;
+            font-size: 1rem;
+        }
+        .findings-list li .fa-check-circle { color: #10b981; }
+        .findings-list li .fa-exclamation-triangle { color: #f59e0b; }
+        .findings-list li .fa-times-circle { color: #ef4444; }
+        .findings-list li .fa-arrow-right { color: #3b82f6; }
+
+        /* NEW: Findings Table */
+        .findings-table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .findings-table th, .findings-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .findings-table th {
+            color: #94a3b8;
+            font-weight: 600;
+            background: rgba(15, 23, 42, 0.7);
+        }
+        .findings-table td {
+            color: #e2e8f0;
+        }
+        .findings-table tr:hover {
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .findings-table .status-liquefied {
+            color: #f87171;
+            font-weight: 600;
+        }
+        .findings-table .status-mobility {
+            color: #facc15;
+            font-weight: 600;
+        }
+        .findings-table .status-stable {
+            color: #34d399;
+            font-weight: 600;
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                height: 350px;
+            }
+            
+            main {
+                margin: 1rem;
+                padding: 1rem;
+            }
+
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* MODIFIED */
+            .dataset-control-item {
+                grid-template-columns: auto 1fr; /* Stack controls */
+                gap: 0.5rem;
+                padding: 0.75rem;
+            }
+            .dataset-control-item > *:not(:first-child):not(:nth-child(2)) {
+                grid-column: 2 / 3; /* Place controls under label */
+                width: 100%;
+                min-width: unset;
+            }
+            /* NEW */
+            .custom-range {
+                width: 100%;
+            }
+            .dataset-control-item .form-select {
+                min-width: unset;
+            }
+        }
+        
+        /* Animation for stat cards */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="p-0 md:p-0">
+    <div class="max-w-full mx-auto bg-transparent rounded-none shadow-xl overflow-hidden flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gray-900 text-white p-4 flex-shrink-0">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Multi-Data Comparison Tool</h1>
+                        <p class="text-sm text-gray-300">Seismic Analysis Visualization</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm text-gray-300">Live</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow p-6 space-y-6 overflow-y-auto">
+            
+            <!-- Data Import Section -->
+            <div class="import-section">
+                <div class="tab-nav">
+                    <button class="tab-button ru-tab active" data-tab="ru-data">
+                        <i class="fas fa-wave-square"></i> Time-RU
+                    </button>
+                    <button class="tab-button time-acc-tab" data-tab="time-acc-data">
+                        <i class="fas fa-tachometer-alt"></i> Time ACCELERATION
+                    </button>
+                    <button class="tab-button disp-tab" data-tab="displacement-data">
+                        <i class="fas fa-ruler-horizontal"></i> Time-Displacement
+                    </button>
+                </div>
+                
+                <!-- RU Data Tab -->
+                <div id="ru-data" class="tab-content active">
+                    <h3 class="text-lg font-semibold text-blue-400 mb-3">Upload Time-RU Files</h3>
+                    <div class="file-upload-area" id="ru-upload-area" data-type="ru">
+                        <i class="fas fa-file-import text-3xl mb-3 text-blue-400"></i>
+                        <p class="mt-2">Drag & drop files here, or <span class="font-medium text-blue-400">browse</span></button>
+                        <p class="text-xs text-gray-500 mt-1">Supports .csv, .xlsx, .xlsm, .json, .txt, .dat (Max 50MB)</p>
+                        <input type="file" id="ru-file-input" class="hidden" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel.sheet.macroEnabled.12, .json, .txt, .dat">
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-300 mb-2">Uploaded Time-RU Files</h4>
+                    <div class="file-list" id="ru-file-list">
+                        <p class="text-center text-gray-500 p-4">No files uploaded.</p>
+                    </div>
+                </div>
+                
+                <!-- Time-Acceleration Data Tab -->
+                <div id="time-acc-data" class="tab-content">
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-3">Upload Time ACCELERATION Files</h3>
+                    <div class="file-upload-area" id="time-acc-upload-area" data-type="timeAcc">
+                        <i class="fas fa-file-import text-3xl mb-3 text-yellow-400"></i>
+                        <p class="mt-2">Drag & drop files here, or <span class="font-medium text-yellow-400">browse</span></button>
+                        <p class="text-xs text-gray-500 mt-1">Supports .csv, .xlsx, .xlsm, .json, .txt, .dat (Max 50MB)</p>
+                        <input type="file" id="time-acc-file-input" class="hidden" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel.sheet.macroEnabled.12, .json, .txt, .dat">
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-300 mb-2">Uploaded Time ACCELERATION Files</h4>
+                    <div class="file-list" id="time-acc-file-list">
+                        <p class="text-center text-gray-500 p-4">No files uploaded.</p>
+                    </div>
+                </div>
+
+                <!-- Displacement Data Tab -->
+                <div id="displacement-data" class="tab-content">
+                    <h3 class="text-lg font-semibold text-green-400 mb-3">Upload Time-Displacement Files</h3>
+                    <div class="file-upload-area" id="displacement-upload-area" data-type="displacement">
+                        <i class="fas fa-file-import text-3xl mb-3 text-green-400"></i>
+                        <p class="mt-2">Drag & drop files here, or <span class="font-medium text-green-400">browse</span></button>
+                        <p class="text-xs text-gray-500 mt-1">Supports .csv, .xlsx, .xlsm, .json, .txt, .dat (Max 50MB)</p>
+                        <input type="file" id="displacement-file-input" class="hidden" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel.sheet.macroEnabled.12, .json, .txt, .dat">
+                    </div>
+                    <h4 class="text-md font-semibold text-gray-300 mb-2">Uploaded Time-Displacement Files</h4>
+                    <div class="file-list" id="displacement-file-list">
+                        <p class="text-center text-gray-500 p-4">No files uploaded.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="import-section">
+                <h3><i class="fas fa-chart-line text-purple-400"></i> Multi-Data Visualization</h3>
+                <div class="chart-container">
+                    <canvas id="ru-acc-time-chart"></canvas>
+                </div>
+                <div class="perf-metrics">
+                    Rendering <span>0</span> datasets / <span>0</span> total points
+                </div>
+                
+                <!-- Chart Controls -->
+                <div class="controls-section">
+                    <div class="controls-header" id="controls-toggle">
+                        <span><i class="fas fa-sliders-h mr-2"></i> Chart & Layer Controls</span>
+                        <i id="controls-chevron" class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="controls-content" id="controls-content">
+                        <div class="control-grid">
+                            <!-- Left Column: Layer Controls -->
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-300 mb-4">Dataset Layers</h4>
+                                <div id="dataset-controls-list" class="max-h-80 overflow-y-auto pr-2">
+                                    <p class="text-gray-500 text-center">Upload datasets to see controls.</p>
+                                </div>
+                            </div>
+
+                            <!-- Right Column: Axis & Sampling -->
+                            <div>
+                                <h4 class="text-lg font-semibold text-gray-300 mb-4">Chart Settings</h4>
+                                
+                                <!-- Axis Controls -->
+                                <div class="control-group">
+                                    <h5 class="text-md font-semibold text-gray-400 mb-3">Axis Controls</h5>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label for="x-min" class="form-label">X-Axis Min</label>
+                                            <input type="number" id="x-min" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="x-max" class="form-label">X-Axis Max</label>
+                                            <input type="number" id="x-max" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y-min" class="form-label">Y-Axis (Accel)</label>
+                                            <input type="number" id="y-min" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y-max" class="form-label">Y-Axis (Acc_)</label>
+                                            <input type="number" id="y-max" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y1-min" class="form-label">Y1-Axis (RU)</label>
+                                            <input type="number" id="y1-min" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y1-max" class="form-label">Y1-Axis (RU_)</label>
+                                            <input type="number" id="y1-max" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y2-min" class="form-label">Y2-Axis (Disp)</label>
+                                            <input type="number" id="y2-min" class="form-input" placeholder="Auto">
+                                        </div>
+                                        <div>
+                                            <label for="y2-max" class="form-label">Y2-Axis (Disp_)</label>
+                                            <input type="number" id="y2-max" class="form-input" placeholder="Auto">
+                                        </div>
+                                    </div>
+                                    <button id="apply-axis-limits" class="btn btn-secondary w-full mt-4">Apply Limits</button>
+                                </div>
+
+                                <!-- Data Sampling -->
+                                <div class="control-group mt-6">
+                                    <h5 class="text-md font-semibold text-gray-400 mb-3">Performance</h5>
+                                    <label for="data-sampling" class="form-label">Data Sampling (for large datasets)</label>
+                                    <select id="data-sampling" class="form-select">
+                                        <option value="1">100% (Full data)</option>
+                                        <option value="0.5">50%</option>
+                                        <option value="0.25">25%</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart-wide actions -->
+                        <div class="flex flex-wrap gap-3 mt-6 justify-center pt-4 border-t border-gray-700">
+                            <button id="export-chart-image" class="btn btn-success">
+                                <i class="fas fa-download"></i> Export Chart Image
+                            </button>
+                            <button id="clear-all-data" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Clear All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Key Findings and Conclusions -->
+            <div class="import-section">
+                <h3><i class="fas fa-clipboard-check text-teal-400"></i> Key Findings and Conclusions</h3>
+                <div class="findings-list">
+                    
+                    <h4><i class="fas fa-water text-gray-400"></i> Liquefaction Analysis (from Time-RU Data)</h4>
+                    <div class="findings-table-container" id="findings-container">
+                        <p class="text-gray-500 text-center p-4">Upload Time-RU data to run liquefaction analysis.</p>
+                    </div>
+
+                    <h4 class="mt-6"><i class="fas fa-chart-pie text-gray-400"></i> General Observations</h4>
+                    <ul>
+                        <li><i class="fas fa-arrow-right"></i> Compare liquefaction start times with acceleration peaks to find correlations.</li>
+                        <li><i class="fas fa-arrow-right"></i> Observe displacement data to see ground settlement post-liquefaction.</li>
+                    </ul>
+                </div>
+            </div>
+            
+        </main>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-message"></span>
+    </div>
+
+    <script>
+        // MODIFIED: Wait for window.load to ensure all scripts are loaded
+        window.addEventListener('load', () => {
+            // Global state for Ru-Acc-Time interface
+            const globalState = {
+                ruAccTime: {
+                    chart: null,
+                    ruDatasets: [], // Array of { id, name, data, settings, analysis }
+                    timeAccDatasets: [], // Array of { id, name, data, settings }
+                    displacementDatasets: [], // Array of { id, name, data, settings }
+                    samplingFactor: 1, // 1 = 100%
+                }
+            };
+
+            const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+            // Base colors for auto-assignment
+            const BASE_COLORS = [
+                '#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899',
+                '#60a5fa', '#facc15', '#34d399', '#f87171', '#a78bfa', '#f472b6'
+            ];
+            let colorIndex = 0;
+
+            // Initialize the application
+            function initialize() {
+                // Register annotation plugin
+                // FIX: Check if plugin is registered in Chart.js
+                if (Chart.registry.plugins.get('annotation')) {
+                    // Plugin is loaded
+                } else {
+                    console.error("Chart.js Annotation plugin not loaded!");
+                    showToast("Error: Annotation plugin failed to load.", "error");
+                }
+                initializeRuAccTimeChart();
+                attachEventListeners();
+            }
+
+            // Attach all event listeners
+            function attachEventListeners() {
+                // Tab navigation
+                document.querySelectorAll('.tab-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const tabId = button.dataset.tab;
+                        
+                        // Deactivate all
+                        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                        
+                        // Activate clicked
+                        button.classList.add('active');
+                        document.getElementById(tabId).classList.add('active');
+                    });
+                });
+
+                // File Upload Areas (RU, Time-Acc, Displacement)
+                setupFileUpload('ru');
+                setupFileUpload('timeAcc');
+                setupFileUpload('displacement'); // NEW
+
+                // Chart Controls Toggle
+                document.getElementById('controls-toggle')?.addEventListener('click', () => {
+                    const content = document.getElementById('controls-content');
+                    const chevron = document.getElementById('controls-chevron');
+                    if (content && chevron) {
+                        content.classList.toggle('open');
+                        chevron.classList.toggle('fa-chevron-down');
+                        chevron.classList.toggle('fa-chevron-up');
+                    }
+                });
+                
+                // Chart Controls Listeners (Delegated)
+                document.getElementById('dataset-controls-list')?.addEventListener('change', (e) => {
+                    const target = e.target;
+                    const { id, type, prop } = target.dataset;
+                    if (!id || !type || !prop) return;
+
+                    const value = target.type === 'checkbox' ? target.checked : target.value;
+                    updateDatasetSetting(id, type, prop, value);
+                });
+                
+                // Axis limits
+                document.getElementById('apply-axis-limits')?.addEventListener('click', updateChartAxisLimits);
+                
+                // Data sampling
+                document.getElementById('data-sampling')?.addEventListener('change', (e) => {
+                    globalState.ruAccTime.samplingFactor = parseFloat(e.target.value);
+                    updateChart();
+                    showToast(`Data sampling set to ${e.target.selectedOptions[0].text}`, "info");
+                });
+                
+                // Chart-wide actions
+                document.getElementById('export-chart-image')?.addEventListener('click', exportChartImage);
+                document.getElementById('clear-all-data')?.addEventListener('click', clearAllData);
+            }
+
+            // Setup file upload for a specific data type
+            function setupFileUpload(dataType) {
+                let uploadAreaId, fileInputId;
+                if (dataType === 'ru') {
+                    uploadAreaId = 'ru-upload-area';
+                    fileInputId = 'ru-file-input';
+                } else if (dataType === 'timeAcc') {
+                    uploadAreaId = 'time-acc-upload-area';
+                    fileInputId = 'time-acc-file-input';
+                } else {
+                    uploadAreaId = 'displacement-upload-area';
+                    fileInputId = 'displacement-file-input';
+                }
+                
+                const uploadArea = document.getElementById(uploadAreaId);
+                const fileInput = document.getElementById(fileInputId);
+                
+                if (!uploadArea || !fileInput) return; // Add guard clause
+
+                uploadArea?.addEventListener('click', () => fileInput.click());
+                uploadArea?.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('drag-over');
+                });
+                uploadArea?.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('drag-over');
+                });
+                uploadArea?.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('drag-over');
+                    if (e.dataTransfer.files.length) {
+                        handleFileUpload(e.dataTransfer.files, dataType);
+                    }
+                });
+                fileInput?.addEventListener('change', (e) => {
+                    if (e.target.files.length) {
+                        handleFileUpload(e.target.files, dataType);
+                    }
+                    // Clear the input to allow re-uploading the same file
+                    e.target.value = null;
+                });
+            }
+
+            // Initialize the Ru-Acc-Time chart
+            function initializeRuAccTimeChart() {
+                const ctx = document.getElementById('ru-acc-time-chart');
+                if (!ctx) return;
+                
+                Chart.defaults.color = '#e2e8f0';
+                Chart.defaults.borderColor = 'rgba(100, 116, 139, 0.2)';
+
+                globalState.ruAccTime.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear', // Use linear scale for time
+                                title: {
+                                    display: true,
+                                    text: 'Time (seconds)',
+                                    color: '#94a3b8',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                                ticks: { color: '#cbd5e1' }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Acceleration (g)',
+                                    color: '#f59e0b', // Match tab
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                grid: { color: 'rgba(100, 116, 139, 0.2)' },
+                                ticks: { color: '#cbd5e1' }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'RU Value (Pore Pressure Ratio)',
+                                    color: '#3b82f6', // Match tab
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                grid: { drawOnChartArea: false },
+                                ticks: { color: '#cbd5e1' }
+                            },
+                            y2: { // NEW Displacement Axis
+                                type: 'linear',
+                                display: true,
+                                position: 'left', // Place on left
+                                offset: true, // Offset from 'y' axis
+                                title: {
+                                    display: true,
+                                    text: 'Displacement',
+                                    color: '#10b981', // Match tab
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                grid: { drawOnChartArea: false }, // No grid lines to avoid clutter
+                                ticks: { color: '#cbd5e1' }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false // We use custom controls
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleColor: '#60a5fa',
+                                bodyColor: '#e2e8f0',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    labelColor: function(context) {
+                                        return {
+                                            borderColor: context.dataset.borderColor,
+                                            backgroundColor: context.dataset.borderColor,
+                                            borderWidth: 2,
+                                            borderRadius: 2,
+                                        };
+                                    }
+                                }
+                            },
+                            annotation: { // NEW: Annotation plugin config
+                                annotations: {}
+                            }
+                        },
+                        animation: false, // Disable for performance
+                        normalized: true, // Performance boost
+                        parsing: false, // Performance boost, data is pre-parsed
+                    }
+                });
+            }
+
+            // Handle file upload
+            function handleFileUpload(files, dataType) {
+                if (!files) return;
+                
+                Array.from(files).forEach(file => {
+                    if (file.size > MAX_FILE_SIZE) {
+                        showToast(`File too large: ${file.name} (Max 50MB)`, "error");
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        try {
+                            const data = parseFileData(e.target.result, file.name);
+                            if (!data) {
+                                showToast(`Failed to parse file: ${file.name}`, "error");
+                                return;
+                            }
+                            
+                            const dataset = createDataset(file.name, data, dataType);
+                            
+                            if (dataType === 'ru') {
+                                // NEW: Perform liquefaction analysis on RU data
+                                dataset.analysis = analyzeLiquefaction(dataset.data);
+                                globalState.ruAccTime.ruDatasets.push(dataset);
+                                // Update findings *after* adding data
+                                updateLiquefactionFindings();
+                            } else if (dataType === 'timeAcc') {
+                                globalState.ruAccTime.timeAccDatasets.push(dataset);
+                            } else {
+                                globalState.ruAccTime.displacementDatasets.push(dataset);
+                            }
+                            
+                            updateFileList(dataType);
+                            updateChart();
+                            updateChartControlsUI();
+                            showToast(`Imported: ${file.name}`, "success");
+                            
+                        } catch (error) {
+                            console.error("Error parsing file:", error);
+                            showToast(`Error parsing ${file.name}: ${error.message}`, "error");
+                        }
+                    };
+                    
+                    reader.onerror = () => {
+                        showToast(`Error reading file: ${file.name}`, "error");
+                    };
+                    
+                    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xlsm') || file.name.endsWith('.xls')) {
+                        reader.readAsBinaryString(file);
+                    } else {
+                        reader.readAsText(file);
+                    }
+                });
+            }
+            
+            // Parse file data based on extension
+            function parseFileData(fileContent, fileName) {
+                let rawData = [];
+                
+                if (fileName.endsWith('.xlsx') || fileName.endsWith('.xlsm') || fileName.endsWith('.xls')) {
+                    const workbook = XLSX.read(fileContent, { type: 'binary' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                } else if (fileName.endsWith('.json')) {
+                    // NEW: JSON parsing
+                    const jsonData = JSON.parse(fileContent);
+                    if (Array.isArray(jsonData)) {
+                        // Assuming [ { "time": t, "value": v }, ... ] or [ [t, v], ... ]
+                        if (typeof jsonData[0] === 'object' && jsonData[0] !== null) {
+                            rawData = jsonData.map(row => [row.time, row.value]);
+                        } else if (Array.isArray(jsonData[0])) {
+                            rawData = jsonData;
+                        } else {
+                            throw new Error("Invalid JSON format. Expected array of objects or arrays.");
+                        }
+                    } else {
+                         throw new Error("Invalid JSON format. Expected an array.");
+                    }
+                } else {
+                    // Default to CSV/TXT/DAT parsing
+                    const lines = fileContent.split(/\r?\n/);
+                    rawData = lines.map(line => line.trim().split(/[\s,;:\t]+/)); // Split by common delimiters
+                }
+                
+                // Process raw data into {x, y} format
+                const data = [];
+                // Skip header, start from i = 1, or 0 if no header is detected
+                let startRow = 0;
+                if (rawData.length > 0 && rawData[0] && isNaN(parseFloat(rawData[0][0]))) {
+                    startRow = 1; // Skip header row
+                }
+                
+                for (let i = startRow; i < rawData.length; i++) {
+                    if (rawData[i] && rawData[i].length >= 2) {
+                        const time = parseFloat(rawData[i][0]);
+                        const value = parseFloat(rawData[i][1]);
+                        if (!isNaN(time) && !isNaN(value)) {
+                            data.push({ x: time, y: value });
+                        }
+                    }
+                }
+                return data;
+            }
+
+            // Create a new dataset object
+            function createDataset(name, data, dataType) {
+                const id = `${dataType}-${Date.now()}-${Math.random()}`;
+                colorIndex = (colorIndex + 1) % BASE_COLORS.length;
+                let yAxisID;
+                if (dataType === 'ru') yAxisID = 'y1';
+                else if (dataType === 'timeAcc') yAxisID = 'y';
+                else yAxisID = 'y2';
+                
+                return {
+                    id: id,
+                    name: name,
+                    data: data,
+                    settings: {
+                        visible: true,
+                        color: BASE_COLORS[colorIndex],
+                        style: 'solid',
+                        thickness: 2,
+                        opacity: 0.9,
+                        yAxisID: yAxisID
+                    },
+                    analysis: null // Placeholder for RU analysis
+                };
+            }
+
+            // Update the file list UI for a data type
+            function updateFileList(dataType) {
+                let fileListId, datasets;
+                if (dataType === 'ru') {
+                    fileListId = 'ru-file-list';
+                    datasets = globalState.ruAccTime.ruDatasets;
+                } else if (dataType === 'timeAcc') {
+                    fileListId = 'time-acc-file-list';
+                    datasets = globalState.ruAccTime.timeAccDatasets;
+                } else {
+                    fileListId = 'displacement-file-list';
+                    datasets = globalState.ruAccTime.displacementDatasets;
+                }
+                
+                const listEl = document.getElementById(fileListId);
+                if (!listEl) return;
+                
+                if (datasets.length === 0) {
+                    listEl.innerHTML = `<p class="text-center text-gray-500 p-4">No files uploaded.</p>`;
+                    return;
+                }
+                
+                listEl.innerHTML = datasets.map(ds => `
+                    <div class="file-list-item">
+                        <div class="file-list-item-info">
+                            <i class="fas fa-file-alt"></i>
+                            <span class="file-list-item-name" title="${ds.name}">${ds.name}</span>
+                        </div>
+                        <div class"flex items-center gap-4">
+                            <span class="file-list-item-size">${(ds.data.length * 16 / 1024).toFixed(2)} KB</span>
+                            <button class="file-remove-btn" data-id="${ds.id}" data-type="${dataType}" title="Remove file">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Add event listeners for new remove buttons
+                listEl.querySelectorAll('.file-remove-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Use currentTarget to ensure dataset is correct
+                        const { id, type } = e.currentTarget.dataset;
+                        removeDataset(id, type);
+                    });
+                });
+            }
+            
+            // Remove a dataset
+            function removeDataset(id, dataType) {
+                if (dataType === 'ru') {
+                    globalState.ruAccTime.ruDatasets = globalState.ruAccTime.ruDatasets.filter(ds => ds.id !== id);
+                    updateLiquefactionFindings(); // Update findings on removal
+                } else if (dataType === 'timeAcc') {
+                    globalState.ruAccTime.timeAccDatasets = globalState.ruAccTime.timeAccDatasets.filter(ds => ds.id !== id);
+                } else {
+                    globalState.ruAccTime.displacementDatasets = globalState.ruAccTime.displacementDatasets.filter(ds => ds.id !== id);
+                }
+                
+                updateFileList(dataType);
+                updateChart();
+                updateChartControlsUI();
+                showToast("File removed", "info");
+            }
+
+            // Clear all data
+            function clearAllData() {
+                globalState.ruAccTime.ruDatasets = [];
+                globalState.ruAccTime.timeAccDatasets = [];
+                globalState.ruAccTime.displacementDatasets = [];
+                
+                updateFileList('ru');
+                updateFileList('timeAcc');
+                updateFileList('displacement');
+                updateLiquefactionFindings(); // Clear findings
+                updateChart();
+                updateChartControlsUI();
+                showToast("All data cleared", "info");
+            }
+
+            // Update data statistics display
+            function updatePerformanceMetrics() {
+                const { ruDatasets, timeAccDatasets, displacementDatasets, samplingFactor } = globalState.ruAccTime;
+                
+                let activeDatasets = 0;
+                let totalPoints = 0;
+                
+                const allDatasets = [...ruDatasets, ...timeAccDatasets, ...displacementDatasets];
+                allDatasets.forEach(ds => {
+                    if (ds.settings.visible) {
+                        activeDatasets++;
+                        totalPoints += Math.floor(ds.data.length * samplingFactor);
+                    }
+                });
+                
+                const metricsEl = document.querySelector('.perf-metrics');
+                if (metricsEl) {
+                    metricsEl.innerHTML = `Rendering <span>${activeDatasets}</span> datasets / <span>${totalPoints.toLocaleString()}</span> total points`;
+                }
+            }
+            
+            // --- NEW: Liquefaction Analysis ---
+            function analyzeLiquefaction(data) {
+                if (!data || data.length === 0) {
+                    return { liquefied: false, startTime: 0, peakRu: 0, duration: 0, status: 'N/A' };
+                }
+
+                const startTime = data[0].x;
+                let peakRu = 0;
+                let liquefactionStartTime = null;
+                let liquefactionEndTime = null;
+                let liquefied = false;
+                let inLiquefiedState = false;
+                let hasCyclicMobility = false;
+
+                for (let i = 0; i < data.length; i++) {
+                    const point = data[i];
+                    if (point.y > peakRu) {
+                        peakRu = point.y;
+                    }
+                    
+                    if (point.y >= 1.0) {
+                        if (!liquefied) {
+                            liquefied = true;
+                            liquefactionStartTime = point.x;
+                        }
+                        if (!inLiquefiedState) {
+                            inLiquefiedState = true;
+                        }
+                        liquefactionEndTime = point.x; // Keep updating end time
+                    } else {
+                        if (inLiquefiedState) {
+                            // We've dropped below 1.0 after being liquefied
+                            inLiquefiedState = false;
+                            if (liquefied) {
+                                hasCyclicMobility = true; // Flag mobility if ru drops and rises again later
+                            }
+                        }
+                    }
+                }
+                
+                let duration = 0;
+                if (liquefied) {
+                    // This is a simple duration; a more complex one would sum up all time > 1.0
+                    duration = liquefactionEndTime - liquefactionStartTime;
+                }
+
+                let status = '<span class="status-stable">Stable</span>';
+                if (liquefied) {
+                    status = hasCyclicMobility ? '<span class="status-mobility">Cyclic Mobility</span>' : '<span class="status-liquefied">Liquefied</span>';
+                }
+
+                return {
+                    liquefied: liquefied,
+                    startTime: startTime,
+                    peakRu: peakRu.toFixed(3),
+                    liquefactionStartTime: liquefactionStartTime,
+                    liquefactionEndTime: liquefactionEndTime,
+                    timeToLiquefaction: liquefied ? (liquefactionStartTime - startTime).toFixed(3) : 'N/A',
+                    duration: liquefied ? duration.toFixed(3) : 'N/A',
+                    status: status
+                };
+            }
+
+            // NEW: Update Findings Section
+            function updateLiquefactionFindings() {
+                const { ruDatasets } = globalState.ruAccTime;
+                const container = document.getElementById('findings-container');
+                if (!container) return;
+                
+                const visibleRuDatasets = ruDatasets.filter(ds => ds.settings.visible && ds.analysis);
+                
+                if (visibleRuDatasets.length === 0) {
+                    container.innerHTML = `<p class="text-gray-500 text-center p-4">Upload or enable Time-RU data to run liquefaction analysis.</p>`;
+                    return;
+                }
+
+                let tableHtml = `
+                    <table class="findings-table">
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Status</th>
+                                <th>Time to Liquefaction (s)</th>
+                                <th>Liquefaction Duration (s)</th>
+                                <th>Peak ru</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                visibleRuDatasets.forEach(ds => {
+                    const analysis = ds.analysis;
+                    tableHtml += `
+                        <tr>
+                            <td title="${ds.name}">${ds.name.length > 30 ? ds.name.substring(0, 27) + '...' : ds.name}</td>
+                            <td>${analysis.status}</td>
+                            <td>${analysis.timeToLiquefaction}</td>
+                            <td>${analysis.duration}</td>
+                            <td>${analysis.peakRu}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+                container.innerHTML = tableHtml;
+            }
+
+            // NEW: Update Chart Annotations
+            function updateChartAnnotations() {
+                const { ruDatasets } = globalState.ruAccTime;
+                const chart = globalState.ruAccTime.chart;
+                if (!chart || !chart.options.plugins.annotation) return;
+
+                const annotations = {};
+                
+                ruDatasets.forEach((ds, index) => {
+                    if (!ds.settings.visible || !ds.analysis.liquefied) return;
+                    
+                    const analysis = ds.analysis;
+                    
+                    // 1. Vertical Line for Liquefaction Start
+                    annotations[`line-${ds.id}`] = {
+                        type: 'line',
+                        scaleID: 'x',
+                        value: analysis.liquefactionStartTime,
+                        borderColor: '#ef4444',
+                        borderWidth: 2,
+                        borderDash: [6, 6],
+                        label: {
+                            content: `${ds.name} Liquefaction`,
+                            display: true,
+                            position: 'start',
+                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                            font: { size: 10, weight: 'bold' }
+                        }
+                    };
+                    
+                    // 2. Box for Liquefaction Duration
+                    annotations[`box-${ds.id}`] = {
+                        type: 'box',
+                        xMin: analysis.liquefactionStartTime,
+                        xMax: analysis.liquefactionEndTime,
+                        yMin: 0.95, // Show just below the 1.0 line on ru axis
+                        yMax: 1.05, // Show just above
+                        yScaleID: 'y1', // Pin to the RU axis
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        borderColor: 'rgba(239, 68, 68, 0.5)',
+                        borderWidth: 1
+                    };
+                });
+                
+                chart.options.plugins.annotation.annotations = annotations;
+            }
+
+            // Update the chart with new data
+            function updateChart() {
+                const chart = globalState.ruAccTime.chart;
+                if (!chart) return;
+                
+                const { ruDatasets, timeAccDatasets, displacementDatasets, samplingFactor } = globalState.ruAccTime;
+                
+                let chartDatasets = [];
+                
+                const processDatasets = (datasets) => {
+                    datasets.forEach(ds => {
+                        if (!ds.settings.visible) return;
+                        
+                        // Apply sampling
+                        let sampledData = ds.data;
+                        if (samplingFactor < 1) {
+                            sampledData = [];
+                            const step = 1 / samplingFactor;
+                            for (let i = 0; i < ds.data.length; i += step) {
+                                sampledData.push(ds.data[Math.floor(i)]);
+                            }
+                        }
+                        
+                        chartDatasets.push({
+                            label: ds.name,
+                            data: sampledData,
+                            borderColor: ds.settings.color,
+                            backgroundColor: `${ds.settings.color}33`, // Add alpha
+                            borderWidth: ds.settings.thickness,
+                            pointRadius: 0,
+                            yAxisID: ds.settings.yAxisID,
+                            fill: false,
+                            tension: 0.1,
+                            borderDash: ds.settings.style === 'dashed' ? [5, 5] : (ds.settings.style === 'dotted' ? [1, 3] : []),
+                            globalAlpha: ds.settings.opacity
+                        });
+                    });
+                };
+                
+                processDatasets(timeAccDatasets);
+                processDatasets(ruDatasets);
+                processDatasets(displacementDatasets); // NEW
+                
+                chart.data.datasets = chartDatasets;
+                
+                // Determine which axes to display
+                chart.options.scales.y.display = timeAccDatasets.some(ds => ds.settings.visible);
+                chart.options.scales.y1.display = ruDatasets.some(ds => ds.settings.visible);
+                chart.options.scales.y2.display = displacementDatasets.some(ds => ds.settings.visible);
+
+                // NEW: Update annotations
+                updateChartAnnotations();
+                
+                chart.update();
+                updatePerformanceMetrics();
+            }
+            
+            // Update the chart controls UI
+            function updateChartControlsUI() {
+                const { ruDatasets, timeAccDatasets, displacementDatasets } = globalState.ruAccTime;
+                const container = document.getElementById('dataset-controls-list');
+
+                if (!container) return; // Add guard clause
+
+                if (ruDatasets.length === 0 && timeAccDatasets.length === 0 && displacementDatasets.length === 0) {
+                    container.innerHTML = `<p class="text-gray-500 text-center">Upload datasets to see controls.</p>`;
+                    return;
+                }
+
+                let html = '';
+
+                if (timeAccDatasets.length > 0) {
+                    html += `<h5 class="h5-time-acc mb-2 mt-4">Time ACCELERATION Layers (Y)</h5>`;
+                    html += timeAccDatasets.map(ds => createControlItem(ds, 'timeAcc')).join('');
+                }
+                if (ruDatasets.length > 0) {
+                    html += `<h5 class="h5-time-ru mb-2 mt-4">Time-RU Data Layers (Y1)</h5>`;
+                    html += ruDatasets.map(ds => createControlItem(ds, 'ru')).join('');
+                }
+                if (displacementDatasets.length > 0) { // NEW
+                    html += `<h5 class="h5-time-disp mb-2 mt-4">Time-Displacement Layers (Y2)</h5>`;
+                    html += displacementDatasets.map(ds => createControlItem(ds, 'displacement')).join('');
+                }
+                
+                container.innerHTML = html;
+            }
+
+            // Create HTML for a single dataset control item
+            function createControlItem(ds, dataType) {
+                return `
+                    <div class="dataset-control-item">
+                        <input type="checkbox" class="custom-checkbox" data-id="${ds.id}" data-type="${dataType}" data-prop="visible" ${ds.settings.visible ? 'checked' : ''}>
+                        <label title="${ds.name}">${ds.name}</label>
+                        <input type="color" class="form-input custom-color-input" data-id="${ds.id}" data-type="${dataType}" data-prop="color" value="${ds.settings.color}">
+                        <select class="form-select" data-id="${ds.id}" data-type="${dataType}" data-prop="style">
+                            <option value="solid" ${ds.settings.style === 'solid' ? 'selected' : ''}>Solid</option>
+                            <option value="dashed" ${ds.settings.style === 'dashed' ? 'selected' : ''}>Dashed</option>
+                            <option value="dotted" ${ds.settings.style === 'dotted' ? 'selected' : ''}>Dotted</option>
+                        </select>
+                        <input type="range" class="form-input custom-range" data-id="${ds.id}" data-type="${dataType}" data-prop="thickness" min="1" max="5" step="1" value="${ds.settings.thickness}">
+                        <input type="range" class="form-input custom-range" data-id="${ds.id}" data-type="${dataType}" data-prop="opacity" min="0.1" max="1" step="0.1" value="${ds.settings.opacity}">
+                    </div>
+                `;
+            }
+
+            function updateDatasetSetting(id, dataType, prop, value) {
+                let dataset;
+                if (dataType === 'ru') dataset = globalState.ruAccTime.ruDatasets.find(ds => ds.id === id);
+                else if (dataType === 'timeAcc') dataset = globalState.ruAccTime.timeAccDatasets.find(ds => ds.id === id);
+                else dataset = globalState.ruAccTime.displacementDatasets.find(ds => ds.id === id);
+                
+                if (dataset) {
+                    dataset.settings[prop] = value;
+                    
+                    // NEW: If visibility changed on RU, update findings
+                    if (dataType === 'ru' && prop === 'visible') {
+                        updateLiquefactionFindings();
+                    }
+                    
+                    updateChart(); // Redraw chart with new settings
+                }
+            }
+            
+            function updateChartAxisLimits() {
+                const chart = globalState.ruAccTime.chart;
+                if (!chart) return;
+
+                const getVal = (id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return undefined;
+                    const val = el.value;
+                    return val === '' ? undefined : parseFloat(val);
+                }
+                
+                chart.options.scales.x.min = getVal('x-min');
+                chart.options.scales.x.max = getVal('x-max');
+                chart.options.scales.y.min = getVal('y-min');
+                chart.options.scales.y.max = getVal('y-max');
+                chart.options.scales.y1.min = getVal('y1-min');
+                chart.options.scales.y1.max = getVal('y1-max');
+                chart.options.scales.y2.min = getVal('y2-min');
+                chart.options.scales.y2.max = getVal('y2-max');
+                
+                chart.update();
+                showToast("Axis limits applied", "info");
+            }
+
+            // Export chart as image
+            function exportChartImage() {
+                const chart = globalState.ruAccTime.chart;
+                if (!chart) {
+                    showToast("No chart to export", "error");
+                    return;
+                }
+                
+                // Create a temporary link for download
+                const link = document.createElement('a');
+                link.download = 'multi-data-chart.png';
+                link.href = chart.toBase64Image();
+                link.click();
+                
+                showToast("Chart exported as PNG", "success");
+            }
+
+            // Show toast notification
+            let toastTimer;
+            function showToast(message, type = "info") {
+                const toast = document.getElementById('toast');
+                const msg = document.getElementById('toast-message');
+                if (!toast || !msg) return;
+                
+                msg.textContent = message;
+                toast.className = 'toast show';
+                toast.classList.add(type);
+                
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.classList.remove('success', 'error', 'warning', 'info');
+                }, 3000);
+            }
+
+            // Initialize the application
+            initialize();
+        });
+    </script>
+</body>
+</html>
+

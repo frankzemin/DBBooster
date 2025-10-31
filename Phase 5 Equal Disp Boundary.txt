@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equal Disp Boundary - DBbooster</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS (xlsx.full.min.js) for Excel file parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Custom styles for the app */
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+        }
+        
+        /* Glassmorphism effect */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+        }
+        
+        /* Neon glow effect */
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* Animated gradient button */
+        .gradient-button {
+            background: linear-gradient(45deg, #3b82f6, #60a5fa, #3b82f6);
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Inputs */
+        .config-input, .config-select {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            color: #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .config-input:focus, .config-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Data Grids */
+        .data-grid-container {
+            width: 100%;
+            overflow: auto;
+            max-height: 500px;
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+        
+        .data-grid {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+        
+        .data-grid th, .data-grid td {
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            padding: 0.75rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+        
+        .data-grid th {
+            background: rgba(30, 41, 59, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            user-select: none;
+            cursor: move;
+            min-width: 150px;
+        }
+        
+        .data-grid th.source-grid-header {
+            cursor: default;
+        }
+        
+        .data-grid th.source-grid-header .source-header-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .data-grid th.source-grid-header .form-checkbox {
+            height: 1rem;
+            width: 1rem;
+        }
+        
+        .data-grid th .config-group {
+            font-size: 0.75rem;
+            font-weight: normal;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        
+        .data-grid th .config-group label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+        }
+        
+        .data-grid th .config-group .config-input, .data-grid th .config-group .config-select {
+            font-size: 0.75rem;
+            padding: 4px;
+            width: auto;
+            flex-grow: 1;
+            min-width: 60px;
+        }
+        
+        .data-grid th .config-group .col-name-input {
+            width: 100%;
+            font-size: 0.875rem;
+            font-weight: 600;
+            padding: 4px;
+        }
+        
+        .data-grid th .config-group .calc-input {
+            width: 100%;
+            font-size: 0.75rem;
+            padding: 4px;
+        }
+        
+        .data-grid th .config-group .calc-select {
+            width: 100%;
+            font-size: 0.75rem;
+            padding: 4px;
+        }
+        
+        .data-grid th .col-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+        
+        .data-grid th .col-remove-btn {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 0 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        
+        .data-grid th .col-remove-btn:hover {
+            background-color: rgba(239, 68, 68, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .data-grid td[contenteditable="true"] {
+            background-color: rgba(255, 255, 240, 0.1);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        
+        .data-grid td[contenteditable="true"]:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 0 2px #3b82f6;
+        }
+        
+        .header-drag-over {
+            background-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Equal Disp */
+        .drop-zone {
+            border: 2px dashed rgba(100, 116, 139, 0.5);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            text-align: center;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+            background: rgba(15, 23, 42, 0.5);
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover, .drop-zone-over {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .source-column-container {
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1.5rem;
+            min-height: 120px;
+        }
+        
+        .file-tab-btn {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-bottom: 0;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: -1px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            color: #94a3b8;
+        }
+        
+        .file-tab-btn:hover {
+            background: rgba(56, 70, 94, 0.7);
+            color: #e2e8f0;
+        }
+        
+        .file-tab-btn.active {
+            background: rgba(15, 23, 42, 0.8);
+            font-weight: 600;
+            color: #3b82f6;
+            border-color: rgba(100, 116, 139, 0.5);
+            border-bottom-color: rgba(15, 23, 42, 0.8);
+        }
+        
+        .source-column-list {
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 0 8px 8px 8px;
+            padding: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            min-height: 60px;
+        }
+        
+        .source-column-draggable {
+            background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            color: #bfdbfe;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            user-select: none;
+            transition: all 0.3s ease;
+        }
+        
+        .source-column-draggable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .data-grid th.equal-disp-source-col {
+            background: linear-gradient(45deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.1));
+        }
+        
+        .data-grid th.equal-disp-uniform-col {
+            background: linear-gradient(45deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1));
+        }
+        
+        .data-grid th.equal-disp-uniform-col .col-name-input {
+            background: rgba(251, 191, 36, 0.1);
+            font-style: italic;
+        }
+        
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(20px);
+        }
+        
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        #toast.success {
+            border-left: 4px solid #10b981;
+        }
+        
+        #toast.error {
+            border-left: 4px solid #ef4444;
+        }
+        
+        #toast.warning {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        #toast.info {
+            border-left: 4px solid #3b82f6;
+        }
+        
+        /* Section headers */
+        .section-header {
+            position: relative;
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+        
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            border-radius: 2px;
+        }
+        
+        /* Preview area */
+        #output-preview-equalDisp, #final-output-equalDisp {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 0.75rem;
+            color: #94f294;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+        
+        /* Data view */
+        #data-view-content-equalDisp {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(100, 116, 139, 0.5);
+            border-radius: 0.75rem;
+            color: #cbd5e1;
+            font-family: 'Fira Code', 'Consolas', monospace;
+        }
+        
+        /* Buttons */
+        .action-button {
+            transition: all 0.3s ease;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            padding: 0.6rem 1.2rem;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .action-button:active {
+            transform: translateY(0);
+        }
+        
+        .primary-button {
+            background: linear-gradient(45deg, #3b82f6, #60a5fa);
+            color: white;
+        }
+        
+        .secondary-button {
+            background: rgba(100, 116, 139, 0.3);
+            color: #e2e8f0;
+        }
+        
+        .success-button {
+            background: linear-gradient(45deg, #10b981, #34d399);
+            color: white;
+        }
+        
+        .warning-button {
+            background: linear-gradient(45deg, #f59e0b, #fbbf24);
+            color: white;
+        }
+        
+        .danger-button {
+            background: linear-gradient(45deg, #ef4444, #f87171);
+            color: white;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.7);
+        }
+    </style>
+</head>
+<body class="p-0 md:p-0">
+
+    <div class="max-w-full mx-auto rounded-none overflow-hidden flex flex-col h-screen">
+        <!-- Main Content -->
+        <main class="flex-grow p-6 space-y-8 overflow-auto">
+            <!-- File Upload Section -->
+            <section class="glass-card p-6 neon-glow">
+                <h2 class="section-header text-2xl">1. Load Files (.xlsx, .csv)</h2>
+                <div id="drop-zone-equalDisp" class="drop-zone">
+                    <div class="flex flex-col items-center justify-center gap-4">
+                        <svg class="w-16 h-16 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <div>
+                            <p class="text-lg font-medium">Drag & drop your files here</p>
+                            <p class="text-blue-300 mt-2">or <label for="file-upload-equalDisp" class="font-medium text-blue-400 hover:text-blue-300 cursor-pointer underline">browse files</label></p>
+                        </div>
+                        <p class="text-sm text-slate-400">Supports XLSX and CSV formats</p>
+                    </div>
+                    <input type="file" id="file-upload-equalDisp" class="hidden" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                </div>
+                <div class="mt-4 flex justify-center">
+                    <button id="clear-files-btn-equalDisp" class="action-button danger-button flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Clear All Files
+                    </button>
+                </div>
+            </section>
+            
+            <!-- Loaded Files Section -->
+            <section class="glass-card p-6 neon-glow">
+                <h2 class="section-header text-2xl">2. Loaded Files</h2>
+                <p class="text-slate-300 mb-4">Select a loaded file to view its source data. Format Builder combines <span class="font-bold text-blue-300">all</span> files.</p>
+                <div id="source-columns-container-equalDisp" class="source-column-container">
+                    <div id="file-tabs-equalDisp" class="flex flex-wrap gap-2 mb-4"></div>
+                    <div id="source-column-list-equalDisp" class="source-column-list">
+                        <p class="text-slate-400">Upload a file to see its extracted column here.</p>
+                    </div>
+                </div>
+                <div id="data-view-container-equalDisp" class="w-full h-64 p-4 border border-slate-700 rounded-lg bg-slate-900/50 overflow-auto mt-4">
+                    <pre id="data-view-content-equalDisp" class="font-mono text-sm">No data loaded.</pre>
+                </div>
+            </section>
+            
+            <!-- Format Builder Section -->
+            <section id="format-builder-equalDisp" class="glass-card p-6 neon-glow">
+                <h2 class="section-header text-2xl">3. Format Builder & Output</h2>
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                    <div class="flex flex-wrap gap-3">
+                        <button id="import-all-cols-btn-equalDisp" class="action-button success-button flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Import All Columns
+                        </button>
+                        <button id="add-manual-col-btn-equalDisp" class="action-button warning-button flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Manual Column
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="undo-btn-equalDisp" class="action-button secondary-button flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                            </svg>
+                            Undo
+                        </button>
+                        <button id="redo-btn-equalDisp" class="action-button secondary-button flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                            Redo
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 class="text-xl font-semibold mb-4 text-slate-200">Consolidated Data Grid</h3>
+                <div id="data-grid-container-equalDisp" class="data-grid-container">
+                    <table class="data-grid" id="data-grid-equalDisp">
+                        <thead id="grid-head-equalDisp"></thead>
+                        <tbody id="grid-body-equalDisp"></tbody>
+                    </table>
+                </div>
+                <p id="grid-placeholder-equalDisp" class="text-slate-400 text-center p-12">Upload files and click 'Import All Columns' to begin.</p>
+                
+                <h3 class="text-xl font-semibold mt-8 mb-4 text-slate-200">Preview (First 10 Rows)</h3>
+                <pre id="output-preview-equalDisp" class="w-full h-40 p-4 rounded-lg bg-slate-900/50 overflow-auto"></pre>
+                
+                <h3 class="text-xl font-semibold mt-8 mb-4 text-slate-200">Final Output</h3>
+                <div class="flex gap-3 mb-3">
+                    <button id="generate-output-btn-equalDisp" class="action-button primary-button flex-1 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Generate Output
+                    </button>
+                </div>
+                <textarea id="final-output-equalDisp" class="w-full h-48 p-4 rounded-lg font-mono text-sm shadow-inner" placeholder="Click 'Generate' to create output..."></textarea>
+                
+                <div class="flex gap-4 mt-4">
+                    <button id="copy-btn-equalDisp" class="action-button secondary-button flex-1 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        Copy to Clipboard
+                    </button>
+                    <button id="download-btn-equalDisp" class="action-button secondary-button flex-1 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download File
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // Global state for Equal Disp interface
+            const globalState = {
+                equalDisp: {
+                    files: [],
+                    activeFileIndex: 0,
+                    formats: [{
+                        id: 1,
+                        name: "Equal Disp Format",
+                        columns: [],
+                        editedData: {}
+                    }],
+                    activeFormatId: 1,
+                    draggedHeaderIndex: null,
+                    history: [],
+                    historyIndex: -1
+                }
+            };
+
+            // Initialize the interface
+            function initialize() {
+                renderEqualDispFormatBuilder();
+                attachEqualDispListeners();
+            }
+
+            // Attach event listeners
+            function attachEqualDispListeners() {
+                const dropZone = document.getElementById('drop-zone-equalDisp');
+                const fileInput = document.getElementById('file-upload-equalDisp');
+                
+                if (dropZone) {
+                    dropZone.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.add('drop-zone-over');
+                    });
+                    
+                    dropZone.addEventListener('dragleave', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.remove('drop-zone-over');
+                    });
+                    
+                    dropZone.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.remove('drop-zone-over');
+                        handleFileDrop(e);
+                    });
+                }
+                
+                fileInput?.addEventListener('change', handleFileInput);
+                document.getElementById('clear-files-btn-equalDisp')?.addEventListener('click', clearEqualDispFiles);
+            }
+
+            // Handle file drop
+            function handleFileDrop(e) {
+                if (e.dataTransfer.files.length) {
+                    processFiles(e.dataTransfer.files);
+                }
+            }
+
+            // Handle file input
+            function handleFileInput(e) {
+                if (e.target.files.length) {
+                    processFiles(e.target.files);
+                }
+                e.target.value = null;
+            }
+
+            // Clear all files
+            function clearEqualDispFiles() {
+                const state = globalState.equalDisp;
+                state.files = [];
+                state.activeFileIndex = 0;
+                if (state.formats[0]) {
+                    state.formats[0].columns = [];
+                    state.formats[0].editedData = {};
+                }
+                renderEqualDispSourceColumns();
+                renderEqualDispDataView();
+                renderFormatGrid_EqualDisp();
+                saveState_EqualDisp();
+                showToast("All files cleared", "info");
+            }
+
+            // Process uploaded files
+            function processFiles(files) {
+                const state = globalState.equalDisp;
+                
+                Array.from(files).forEach(file => {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!['csv', 'xlsx'].includes(ext)) {
+                        showToast(`Skipped '${file.name}': Invalid format.`, "error");
+                        return;
+                    }
+                    
+                    showToast(`Processing '${file.name}'...`, "info");
+                    
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        try {
+                            let data = [];
+                            let header = "Column A";
+                            
+                            if (ext === 'xlsx') {
+                                const wb = XLSX.read(e.target.result, { type: 'binary' });
+                                const ws = wb.Sheets[wb.SheetNames[0]];
+                                const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                                
+                                if (json[0]?.[0]) {
+                                    header = json[0][0];
+                                }
+                                
+                                for (let i = 3; i < json.length; i++) {
+                                    if (json[i]?.[0] != null && json[i][0] !== "") {
+                                        data.push([json[i][0]]);
+                                    } else if (data.length > 0 && i >= 3) {
+                                        break;
+                                    }
+                                }
+                            } else {
+                                const lines = e.target.result.split(/[\r\n]+/).filter(l => l.trim());
+                                const parseCsv = (line) => {
+                                    let result = [];
+                                    let cell = '';
+                                    let inQuotes = false;
+                                    
+                                    for (let i = 0; i < line.length; i++) {
+                                        const char = line[i];
+                                        
+                                        if (char === '"') {
+                                            inQuotes = !inQuotes;
+                                        } else if (char === ',' && !inQuotes) {
+                                            result.push(cell);
+                                            cell = '';
+                                        } else {
+                                            cell += char;
+                                        }
+                                    }
+                                    
+                                    result.push(cell);
+                                    return result.map(v => v.replace(/^"|"$/g, ''));
+                                };
+                                
+                                if (lines[0]) {
+                                    const headerRow = parseCsv(lines[0]);
+                                    if (headerRow[0]) {
+                                        header = headerRow[0];
+                                    }
+                                }
+                                
+                                for (let i = 3; i < lines.length; i++) {
+                                    const row = parseCsv(lines[i]);
+                                    if (row?.[0] != null && row[0] !== "") {
+                                        data.push([row[0]]);
+                                    } else if (data.length > 0 && i >= 3) {
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            state.files.push({
+                                name: file.name,
+                                headers: [header],
+                                data: data
+                            });
+                            
+                            showToast(`Loaded '${file.name}'. Extracted ${data.length} rows.`, "success");
+                            
+                            if (state.files.length === 1) {
+                                state.activeFileIndex = 0;
+                            }
+                            
+                            renderEqualDispSourceColumns();
+                            renderEqualDispDataView();
+                            
+                        } catch (err) {
+                            console.error("Parse Error:", err);
+                            showToast(`Error parsing '${file.name}'.`, "error");
+                        }
+                    };
+                    
+                    if (ext === 'xlsx') {
+                        reader.readAsBinaryString(file);
+                    } else {
+                        reader.readAsText(file);
+                    }
+                });
+            }
+
+            // Render source columns
+            function renderEqualDispSourceColumns() {
+                const { files, activeFileIndex } = globalState.equalDisp;
+                const tabsEl = document.getElementById('file-tabs-equalDisp');
+                const listEl = document.getElementById('source-column-list-equalDisp');
+                
+                if (!tabsEl || !listEl) return;
+                
+                tabsEl.innerHTML = "";
+                listEl.innerHTML = "";
+                
+                if (files.length === 0) {
+                    listEl.innerHTML = `<p class="text-slate-400">Upload files to begin.</p>`;
+                    return;
+                }
+                
+                files.forEach((f, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = `file-tab-btn ${i === activeFileIndex ? 'active' : ''}`;
+                    btn.textContent = f.name;
+                    btn.dataset.index = i;
+                    btn.addEventListener('click', () => {
+                        globalState.equalDisp.activeFileIndex = i;
+                        renderEqualDispSourceColumns();
+                        renderEqualDispDataView();
+                    });
+                    tabsEl.appendChild(btn);
+                });
+                
+                const activeFile = files[activeFileIndex];
+                if (activeFile?.headers[0]) {
+                    const div = document.createElement('div');
+                    div.className = 'source-column-draggable';
+                    div.textContent = activeFile.headers[0];
+                    listEl.appendChild(div);
+                } else {
+                    listEl.innerHTML = `<p class="text-slate-400">No header found.</p>`;
+                }
+            }
+
+            // Render data view
+            function renderEqualDispDataView() {
+                const { files, activeFileIndex } = globalState.equalDisp;
+                const contentEl = document.getElementById('data-view-content-equalDisp');
+                
+                if (!contentEl) return;
+                
+                const file = files[activeFileIndex];
+                contentEl.textContent = (!file?.data?.length) ? 'No data available.' : file.data.map(r => r[0]).join('\n');
+            }
+
+            // Render format builder
+            function renderEqualDispFormatBuilder() {
+                document.getElementById('import-all-cols-btn-equalDisp')?.addEventListener('click', importAllColumns_EqualDisp);
+                document.getElementById('add-manual-col-btn-equalDisp')?.addEventListener('click', addManualColumn_EqualDisp);
+                document.getElementById('undo-btn-equalDisp')?.addEventListener('click', undo_EqualDisp);
+                document.getElementById('redo-btn-equalDisp')?.addEventListener('click', redo_EqualDisp);
+                document.getElementById('generate-output-btn-equalDisp')?.addEventListener('click', generateFullOutput_EqualDisp);
+                document.getElementById('copy-btn-equalDisp')?.addEventListener('click', copyOutput_EqualDisp);
+                document.getElementById('download-btn-equalDisp')?.addEventListener('click', downloadOutput_EqualDisp);
+                renderFormatGrid_EqualDisp();
+                saveState_EqualDisp();
+            }
+
+            // Render format grid
+            function renderFormatGrid_EqualDisp() {
+                const state = globalState.equalDisp;
+                const format = state.formats[0];
+                const head = document.getElementById(`grid-head-equalDisp`);
+                const body = document.getElementById(`grid-body-equalDisp`);
+                const placeholder = document.getElementById(`grid-placeholder-equalDisp`);
+                
+                if (!head || !body || !placeholder) return;
+                
+                head.innerHTML = "";
+                body.innerHTML = "";
+                
+                if (format.columns.length === 0) {
+                    placeholder.classList.remove('hidden');
+                    placeholder.textContent = state.files.length > 0 ? "Click 'Import All Columns' to begin." : "Upload files and click 'Import All Columns'.";
+                    updatePreview_EqualDisp(format);
+                    return;
+                }
+                
+                placeholder.classList.add('hidden');
+                const trHead = document.createElement('tr');
+                let maxRows = 0;
+                
+                format.columns.forEach((col, index) => {
+                    if (col.type === 'source' && state.files[col.fileIndex]) {
+                        maxRows = Math.max(maxRows, state.files[col.fileIndex].data.length);
+                    }
+                    
+                    const th = document.createElement('th');
+                    th.draggable = true;
+                    th.dataset.index = index;
+                    th.addEventListener('dragstart', (e) => handleHeaderDragStart(e, 'equalDisp', index));
+                    th.addEventListener('dragover', handleHeaderDragOver);
+                    th.addEventListener('drop', (e) => handleHeaderDrop(e, 'equalDisp', index));
+                    th.addEventListener('dragend', (e) => handleHeaderDragEnd(e, 'equalDisp'));
+                    
+                    const fmtOpts = `<option value="none" ${col.format === 'none' ? 'selected' : ''}>None</option>
+                                   <option value="00000" ${col.format === '00000' ? 'selected' : ''}>00000</option>`;
+                    
+                    let html = '';
+                    
+                    if (col.type === 'source') {
+                        const file = state.files[col.fileIndex];
+                        th.className = 'equal-disp-source-col';
+                        html = `<div class="col-header-content">
+                                    <span class="text-xs font-normal">File: ${file?.name || '??'}<br><strong>${col.header || '??'}</strong></span>
+                                    <span class="col-remove-btn">&times;</span>
+                                </div>
+                                <div class="config-group">
+                                    <label>
+                                        <span>Spaces:</span>
+                                        <input type="number" class="config-input spaces-input" value="${col.spacesBefore}" min="0">
+                                    </label>
+                                    <label>
+                                        <span>Format:</span>
+                                        <select class="config-select format-select">${fmtOpts}</select>
+                                    </label>
+                                </div>`;
+                    } else if (col.type === 'uniform') {
+                        th.className = 'equal-disp-uniform-col';
+                        html = `<div class="col-header-content">
+                                    <input type="text" class="config-input col-name-input" value="${col.name}">
+                                    <span class="col-remove-btn">&times;</span>
+                                </div>
+                                <div class="config-group">
+                                    <label>
+                                        <span>Value:</span>
+                                        <input type="text" class="config-input calc-input uniform-value-input" value="${col.value}" placeholder="Value">
+                                    </label>
+                                    <hr class="my-1 border-slate-600">
+                                    <label>
+                                        <span>Spaces:</span>
+                                        <input type="number" class="config-input spaces-input" value="${col.spacesBefore}" min="0">
+                                    </label>
+                                    <label>
+                                        <span>Format:</span>
+                                        <select class="config-select format-select">${fmtOpts}</select>
+                                    </label>
+                                </div>`;
+                    }
+                    
+                    th.innerHTML = html;
+                    
+                    th.querySelector('.spaces-input')?.addEventListener('change', (e) => {
+                        updateColumnConfig_EqualDisp(index, 'spacesBefore', e.target.value);
+                        saveState_EqualDisp();
+                    });
+                    
+                    th.querySelector('.format-select')?.addEventListener('change', (e) => {
+                        updateColumnConfig_EqualDisp(index, 'format', e.target.value);
+                        saveState_EqualDisp();
+                    });
+                    
+                    th.querySelector('.col-remove-btn')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeColumn_EqualDisp(index);
+                        saveState_EqualDisp();
+                    });
+                    
+                    if (col.type === 'uniform') {
+                        th.querySelector('.col-name-input')?.addEventListener('change', (e) => {
+                            updateColumnConfig_EqualDisp(index, 'name', e.target.value);
+                            saveState_EqualDisp();
+                        });
+                        
+                        th.querySelector('.uniform-value-input')?.addEventListener('change', (e) => {
+                            updateColumnConfig_EqualDisp(index, 'value', e.target.value);
+                            saveState_EqualDisp();
+                        });
+                    }
+                    
+                    trHead.appendChild(th);
+                });
+                
+                head.appendChild(trHead);
+
+                if (maxRows === 0 && format.columns.some(c => c.type === 'uniform')) {
+                    maxRows = 1;
+                }
+                
+                for (let rIdx = 0; rIdx < maxRows; rIdx++) {
+                    const tr = document.createElement('tr');
+                    format.columns.forEach((col, cIdx) => {
+                        const td = tr.insertCell();
+                        const value = getGridCellValue_EqualDisp(col, rIdx, format);
+                        td.textContent = value;
+                        td.contentEditable = "true";
+                        const cellKey = `${rIdx}_${cIdx}`;
+                        
+                        td.addEventListener('blur', (e) => {
+                            handleFormatCellEdit_EqualDisp(e, format, cellKey, value);
+                            saveState_EqualDisp();
+                        });
+                        
+                        if (format.editedData[cellKey] !== undefined) {
+                            td.style.backgroundColor = 'rgba(59, 130, 246, 0.2)';
+                            td.style.fontStyle = 'italic';
+                        }
+                    });
+                    body.appendChild(tr);
+                }
+                
+                updatePreview_EqualDisp(format);
+            }
+
+            // Get grid cell value
+            function getGridCellValue_EqualDisp(col, rowIndex, format) {
+                const editKey = `${rowIndex}_${format.columns.indexOf(col)}`;
+                
+                if (format.editedData[editKey] !== undefined) {
+                    return format.editedData[editKey];
+                }
+                
+                if (col.type === 'source') {
+                    return globalState.equalDisp.files[col.fileIndex]?.data[rowIndex]?.[0] || "";
+                }
+                
+                if (col.type === 'uniform') {
+                    return col.value;
+                }
+                
+                return "";
+            }
+
+            // Handle format cell edit
+            function handleFormatCellEdit_EqualDisp(event, format, cellKey, originalValue) {
+                const newValue = event.target.textContent.trim();
+                
+                if (newValue === originalValue) {
+                    delete format.editedData[cellKey];
+                } else {
+                    format.editedData[cellKey] = newValue;
+                }
+                
+                event.target.style.backgroundColor = newValue === originalValue ? '' : 'rgba(59, 130, 246, 0.2)';
+                event.target.style.fontStyle = newValue === originalValue ? '' : 'italic';
+                updatePreview_EqualDisp(format);
+            }
+
+            // Apply format
+            function applyFormat_EqualDisp(value, formatType) {
+                if (formatType === '00000') {
+                    return (parseInt(value.toString().replace(/[^0-9]/g, ''), 10) || 0).toString().padStart(5, '0');
+                }
+                return value.toString();
+            }
+
+            // Generate concatenated line
+            function generateConcatenatedLine_EqualDisp(format, rowIndex) {
+                return format.columns.map(col => 
+                    " ".repeat(col.spacesBefore || 0) + 
+                    applyFormat_EqualDisp(getGridCellValue_EqualDisp(col, rowIndex, format), col.format)
+                ).join('');
+            }
+
+            // Update preview
+            function updatePreview_EqualDisp(format) {
+                const el = document.getElementById(`output-preview-equalDisp`);
+                if (!format || !el) return;
+                
+                let maxRows = 0;
+                format.columns.forEach(c => {
+                    if (c.type === 'source' && globalState.equalDisp.files[c.fileIndex]) {
+                        maxRows = Math.max(maxRows, globalState.equalDisp.files[c.fileIndex].data.length);
+                    }
+                });
+                
+                if (maxRows === 0 && format.columns.some(c => c.type === 'uniform')) {
+                    maxRows = 1;
+                }
+                
+                if (maxRows === 0) {
+                    el.textContent = "No data available for preview.";
+                    return;
+                }
+                
+                el.textContent = Array.from({ length: Math.min(maxRows, 10) }, (_, i) => 
+                    generateConcatenatedLine_EqualDisp(format, i)
+                ).join('\n');
+            }
+
+            // Generate full output
+            function generateFullOutput_EqualDisp() {
+                const el = document.getElementById(`final-output-equalDisp`);
+                const format = globalState.equalDisp.formats[0];
+                
+                let maxRows = 0;
+                format.columns.forEach(c => {
+                    if (c.type === 'source' && globalState.equalDisp.files[c.fileIndex]) {
+                        maxRows = Math.max(maxRows, globalState.equalDisp.files[c.fileIndex].data.length);
+                    }
+                });
+                
+                if (maxRows === 0 && format.columns.some(c => c.type === 'uniform')) {
+                    maxRows = 1;
+                }
+                
+                if (maxRows === 0) {
+                    showToast("No data available to generate output.", "error");
+                    el.value = "";
+                    return;
+                }
+                
+                el.value = Array.from({ length: maxRows }, (_, i) => 
+                    generateConcatenatedLine_EqualDisp(format, i)
+                ).join('\n');
+                
+                showToast(`Generated ${maxRows} lines of output.`, "success");
+            }
+
+            // Import all columns
+            function importAllColumns_EqualDisp() {
+                const state = globalState.equalDisp;
+                const format = state.formats[0];
+                
+                if (state.files.length === 0) {
+                    showToast("No files loaded. Please upload files first.", "error");
+                    return;
+                }
+                
+                // Import all file columns with 00000 format and 5 leading spaces
+                format.columns = state.files.map((f, i) => ({
+                    type: 'source',
+                    fileIndex: i,
+                    header: f.headers[0] || 'Col 1',
+                    spacesBefore: (i === 0) ? 5 : 0, // 5 spaces before first column
+                    format: '00000' // All columns formatted as 00000
+                }));
+                
+                // Add manual column at the end with 4 leading spaces and no formatting
+                const manualColumnCount = format.columns.filter(c => c.type === 'uniform').length + 1;
+                format.columns.push({
+                    type: 'uniform',
+                    name: `Manual ${manualColumnCount}`,
+                    value: '',
+                    spacesBefore: 4, // 4 leading spaces
+                    format: 'none' // No formatting
+                });
+                
+                format.editedData = {};
+                showToast(`Imported ${state.files.length} columns with automatic formatting.`, "success");
+                saveState_EqualDisp();
+                renderFormatGrid_EqualDisp();
+            }
+
+            // Add manual column
+            function addManualColumn_EqualDisp() {
+                const format = globalState.equalDisp.formats[0];
+                const count = format.columns.filter(c => c.type === 'uniform').length + 1;
+                
+                format.columns.push({
+                    type: 'uniform',
+                    name: `Manual ${count}`,
+                    value: '',
+                    spacesBefore: 4, // 4 leading spaces
+                    format: 'none' // No formatting
+                });
+                
+                saveState_EqualDisp();
+                renderFormatGrid_EqualDisp();
+                showToast(`Added manual column: Manual ${count}`, "success");
+            }
+
+            // Update column configuration
+            function updateColumnConfig_EqualDisp(colIndex, configKey, value) {
+                const col = globalState.equalDisp.formats[0]?.columns[colIndex];
+                if (col) {
+                    col[configKey] = (configKey === 'spacesBefore') ? parseInt(value, 10) : value;
+                }
+                renderFormatGrid_EqualDisp(); // Re-render needed for uniform value change too
+            }
+
+            // Remove column
+            function removeColumn_EqualDisp(colIndex) {
+                const cols = globalState.equalDisp.formats[0]?.columns;
+                if (cols) {
+                    cols.splice(colIndex, 1);
+                }
+                renderFormatGrid_EqualDisp();
+                showToast("Column removed successfully.", "info");
+            }
+
+            // Copy output
+            function copyOutput_EqualDisp() {
+                const el = document.getElementById(`final-output-equalDisp`);
+                if (!el.value) {
+                    showToast("Nothing to copy. Generate output first.", "error");
+                    return;
+                }
+                
+                el.select();
+                el.setSelectionRange(0, 99999);
+                
+                try {
+                    document.execCommand('copy');
+                    showToast("Output copied to clipboard!", "success");
+                } catch (err) {
+                    showToast("Failed to copy. Please try again.", "error");
+                }
+            }
+
+            // Download output
+            function downloadOutput_EqualDisp() {
+                const el = document.getElementById(`final-output-equalDisp`);
+                if (!el.value) {
+                    showToast("Nothing to download. Generate output first.", "error");
+                    return;
+                }
+                
+                const format = globalState.equalDisp.formats[0];
+                const blob = new Blob([el.value], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `equal_disp_output_${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+                showToast("Output downloaded successfully!", "success");
+            }
+
+            // Save state
+            function saveState_EqualDisp() {
+                const state = globalState.equalDisp;
+                const snapshot = JSON.parse(JSON.stringify(state.formats));
+                state.history = state.history.slice(0, state.historyIndex + 1);
+                state.history.push(snapshot);
+                state.historyIndex = state.history.length - 1;
+                updateUndoRedoButtons();
+            }
+
+            // Undo
+            function undo_EqualDisp() {
+                const state = globalState.equalDisp;
+                if (state.historyIndex > 0) {
+                    state.historyIndex--;
+                    state.formats = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+                    renderFormatGrid_EqualDisp();
+                    updateUndoRedoButtons();
+                    showToast("Undo successful.", "info");
+                }
+            }
+
+            // Redo
+            function redo_EqualDisp() {
+                const state = globalState.equalDisp;
+                if (state.historyIndex < state.history.length - 1) {
+                    state.historyIndex++;
+                    state.formats = JSON.parse(JSON.stringify(state.history[state.historyIndex]));
+                    renderFormatGrid_EqualDisp();
+                    updateUndoRedoButtons();
+                    showToast("Redo successful.", "info");
+                }
+            }
+
+            // Update undo/redo buttons
+            function updateUndoRedoButtons() {
+                const { historyIndex, history } = globalState.equalDisp;
+                const undoBtn = document.getElementById('undo-btn-equalDisp');
+                const redoBtn = document.getElementById('redo-btn-equalDisp');
+                
+                if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+                if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+            }
+
+            // Handle header drag start
+            function handleHeaderDragStart(event, interfaceKey, colIndex) {
+                globalState.equalDisp.draggedHeaderIndex = colIndex;
+                event.target.closest('th').classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+            }
+
+            // Handle header drag over
+            function handleHeaderDragOver(event) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                const target = event.target.closest('th');
+                if (target) {
+                    document.querySelectorAll('.header-drag-over').forEach(th => th.classList.remove('header-drag-over'));
+                    target.classList.add('header-drag-over');
+                }
+            }
+
+            // Handle header drop
+            function handleHeaderDrop(event, interfaceKey, droppedOnIndex) {
+                event.preventDefault();
+                document.querySelectorAll('.header-drag-over').forEach(th => th.classList.remove('header-drag-over'));
+                
+                const state = globalState.equalDisp;
+                const format = state.formats[0];
+                
+                if (format && state.draggedHeaderIndex !== null && state.draggedHeaderIndex !== droppedOnIndex) {
+                    const item = format.columns.splice(state.draggedHeaderIndex, 1)[0];
+                    format.columns.splice(droppedOnIndex, 0, item);
+                    renderFormatGrid_EqualDisp();
+                    saveState_EqualDisp();
+                    showToast("Column reordered successfully.", "info");
+                }
+            }
+
+            // Handle header drag end
+            function handleHeaderDragEnd(event, interfaceKey) {
+                globalState.equalDisp.draggedHeaderIndex = null;
+                document.querySelectorAll('.dragging, .header-drag-over').forEach(th => th.classList.remove('dragging', 'header-drag-over'));
+            }
+
+            // Show toast notification
+            function showToast(message, type = "info") {
+                const toast = document.getElementById('toast');
+                if (!toast) return;
+                
+                toast.textContent = message;
+                toast.className = `show ${type}`;
+                
+                setTimeout(() => {
+                    toast.className = "";
+                }, 3000);
+            }
+
+            // Initialize the application
+            initialize();
+        });
+    </script>
+</body>
+</html>

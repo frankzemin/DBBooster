@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Stress Analyzer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load SheetJS (xlsx.full.min.js) for Excel file parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Custom styles for the app */
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Dark blue-gray */
+            color: #e2e8f0; /* Light gray text */
+        }
+        
+        /* Inputs */
+        .config-input, .config-select { 
+            border: 1px solid #334155; /* Dark gray border */
+            border-radius: 0.375rem; 
+            padding: 0.5rem 0.75rem; 
+            font-size: 0.875rem; 
+            background-color: #1e293b; /* Darker background */
+            color: #e2e8f0; /* Light text */
+            transition: border-color 0.2s, box-shadow 0.2s; 
+        }
+        .config-input:focus, .config-select:focus { 
+            outline: 2px solid transparent; 
+            outline-offset: 2px; 
+            border-color: #3b82f6; /* Blue focus border */
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); 
+        }
+        
+        /* Inner Tabs */
+        .tab-btn { 
+            border-bottom: 2px solid transparent; 
+            transition: border-color 0.3s, color 0.3s; 
+        }
+        .tab-btn.active { 
+            border-bottom-color: #3b82f6; 
+            color: #3b82f6; 
+            font-weight: 600; 
+        }
+        .cm-tab-btn, .inspect-tab-btn { 
+            border: 1px solid #334155; 
+            border-bottom: 0; 
+            background-color: #1e293b; 
+            margin-bottom: -1px; 
+            border-radius: 6px 6px 0 0; 
+            padding: 0.5rem 1rem; 
+            font-size: 0.875rem; 
+            cursor: pointer; 
+            transition: background-color 0.2s, color 0.2s; 
+        }
+        .cm-tab-btn:hover, .inspect-tab-btn:hover { 
+            background-color: #334155; 
+        }
+        .cm-tab-btn.active, .inspect-tab-btn.active { 
+            background-color: #0f172a; 
+            border-color: #334155; 
+            border-bottom-color: #0f172a; 
+            font-weight: 600; 
+            color: #3b82f6; 
+        }
+        .cm-tab-btn .delete-material-btn { 
+            margin-left: 8px; 
+            color: #ef4444; 
+            font-weight: bold; 
+            font-size: 1rem; 
+            opacity: 0.5; 
+            transition: opacity 0.2s; 
+        }
+        .cm-tab-btn:hover .delete-material-btn, .cm-tab-btn.active .delete-material-btn { 
+            opacity: 1; 
+        }
+
+        /* Data Grids */
+        .data-grid-container { 
+            width: 100%; 
+            overflow: auto; 
+            max-height: 500px; 
+            border: 1px solid #334155; 
+            border-radius: 0.375rem; 
+            background-color: #1e293b; /* Darker background */
+        }
+        .data-grid { 
+            border-collapse: collapse; 
+            width: 100%; 
+            font-size: 0.875rem; 
+        }
+        .data-grid th, .data-grid td { 
+            border: 1px solid #334155; 
+            padding: 0.5rem 0.75rem; 
+            text-align: left; 
+            white-space: nowrap; 
+        }
+        .data-grid th { 
+            background-color: #334155; /* Dark header */
+            position: sticky; 
+            top: 0; 
+            z-index: 10; 
+            user-select: none; 
+            cursor: move; 
+            min-width: 150px; 
+        }
+        .data-grid th.source-grid-header { 
+            cursor: default; 
+        }
+        .data-grid th.source-grid-header .source-header-content { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            font-size: 0.875rem; 
+            font-weight: 600; 
+        }
+        .data-grid th.source-grid-header .form-checkbox { 
+            height: 1rem; 
+            width: 1rem; 
+        }
+        .data-grid th .config-group { 
+            font-size: 0.75rem; 
+            font-weight: normal; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+            margin-top: 8px; 
+        }
+        .data-grid th .config-group label { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 4px; 
+        }
+        .data-grid th .config-group .config-input, .data-grid th .config-group .config-select { 
+            font-size: 0.75rem; 
+            padding: 2px 4px; 
+            width: auto; 
+            flex-grow: 1; 
+            min-width: 60px;
+        }
+        .data-grid th .config-group .col-name-input { 
+            width: 100%; 
+            font-size: 0.875rem; 
+            font-weight: 600; 
+            padding: 2px 4px; 
+        }
+        .data-grid th .config-group .calc-input { 
+            width: 100%; 
+            font-size: 0.75rem; 
+            padding: 2px 4px; 
+        }
+        .data-grid th .config-group .calc-select { 
+            width: 100%; 
+            font-size: 0.75rem; 
+            padding: 2px 4px; 
+        }
+        .data-grid th .col-header-content { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 0.875rem; 
+        }
+        .data-grid th .col-remove-btn { 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            color: #ef4444; 
+            cursor: pointer; 
+            padding: 0 4px; 
+            border-radius: 4px; 
+            flex-shrink: 0; 
+        }
+        .data-grid th .col-remove-btn:hover { 
+            background-color: #fee2e2; 
+        }
+        .data-grid td[contenteditable="true"] { 
+            background-color: #1e3a8a; /* Dark blue editable */
+            outline: none; 
+        }
+        .data-grid td[contenteditable="true"]:focus { 
+            background-color: #3b82f6; /* Blue focus */
+            box-shadow: inset 0 0 0 2px #1d4ed8; 
+        }
+        .header-drag-over { 
+            background-color: #1e3a8a; 
+        }
+        
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(90deg, #475569 0%, #64748b 100%);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(90deg, #334155 0%, #475569 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-success {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-warning:hover {
+            background: linear-gradient(90deg, #d97706 0%, #f59e0b 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(90deg, #dc2626 0%, #ef4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Cards */
+        .card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #334155;
+        }
+        
+        /* Preview box */
+        .preview-box {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            font-family: 'Consolas', 'Menlo', 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+            min-height: 200px;
+            overflow: auto;
+            white-space: pre;
+        }
+        
+        /* Toast notification */
+        #toast {
+            background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid #334155;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .data-grid th { min-width: 120px; }
+            .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+            .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+    </style>
+</head>
+<body class="p-0 md:p-0">
+
+    <div class="max-w-full mx-auto bg-slate-900 rounded-none shadow-xl overflow-hidden flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gray-900 text-white p-4 flex-shrink-0">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Initial Stress Analyzer</h1>
+                        <p class="text-sm text-gray-400">Advanced geotechnical analysis tool</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-grow p-6 overflow-y-auto">
+            <div id="interface-initialStress" class="interface-pane">
+                <div class="space-y-8">
+                    <!-- Section 1: File Upload -->
+                    <section class="card">
+                        <h2 class="card-title">1. Load Stress Data (.xlsx, .csv)</h2>
+                        <div class="flex flex-col md:flex-row items-center gap-4">
+                            <label for="file-upload-initialStress" class="cursor-pointer btn-primary">
+                                Upload Stress File
+                            </label>
+                            <input type="file" id="file-upload-initialStress" class="hidden" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                            <span id="file-name-initialStress" class="text-gray-400">No file selected</span>
+                            <button id="clear-data-btn-initialStress" class="btn-danger hidden">Clear</button>
+                            <div id="loading-indicator-initialStress" class="hidden">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Upload file with stress data. Expects data in columns A, F, G, and H (Stresses) starting from row 4.</p>
+                    </section>
+
+                    <!-- Section 2: Data View -->
+                    <section id="data-view-section-initialStress" class="card hidden">
+                        <h2 class="card-title">2. Review & Edit Data</h2>
+                        <div id="summary-stats-initialStress" class="text-sm text-gray-400 bg-gray-800 p-3 rounded-lg mb-4"></div>
+                        
+                        <div id="data-grid-container-initialStress" class="data-grid-container hidden">
+                            <table class="data-grid">
+                                <thead id="grid-head-initialStress"></thead>
+                                <tbody id="grid-body-initialStress"></tbody>
+                            </table>
+                        </div>
+                        <p id="grid-placeholder-initialStress" class="text-gray-600 text-center p-8">Upload a file to see data.</p>
+                        
+                        <div id="pagination-controls-initialStress" class="flex justify-between items-center hidden mt-4">
+                            <div class="flex items-center gap-2">
+                                <label for="rows-per-page-initialStress" class="text-sm font-medium text-gray-400">Rows:</label>
+                                <select id="rows-per-page-initialStress" class="config-select !text-sm">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="prev-page-initialStress" class="btn-secondary disabled:opacity-50">&larr; Prev</button>
+                                <span id="page-info-initialStress" class="text-sm text-gray-400">Page 1 of 1</span>
+                                <button id="next-page-initialStress" class="btn-secondary disabled:opacity-50">Next &rarr;</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section 3: Stress Analysis -->
+                    <section id="stress-analysis-section-initialStress" class="card hidden">
+                        <h2 class="card-title">3. Stress Analysis</h2>
+                        <button id="run-analysis-btn-initialStress" class="w-full btn-success py-3 text-lg font-semibold">
+                            Run Stress Analysis
+                        </button>
+                        
+                        <h3 class="font-semibold text-gray-300 mt-6 mb-3">Average Stress per Solid</h3>
+                        <div class="data-grid-container max-h-64">
+                            <table class="data-grid">
+                                <thead id="avg-stress-head"></thead>
+                                <tbody id="avg-stress-body"></tbody>
+                            </table>
+                        </div>
+                        <p id="avg-stress-placeholder" class="text-gray-600 text-center p-8">Run analysis to see results.</p>
+                    </section>
+
+                    <!-- Section 4: Concatenation Module -->
+                    <section id="concatenation-module-section" class="card hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="card-title mb-0">4. Concatenation Module</h2>
+                            <button id="copy-concat-btn" class="btn-primary">Copy Output</button>
+                        </div>
+                        <button id="generate-concatenation-btn" class="w-full btn-warning py-3 text-lg font-semibold mb-6">
+                            Generate Formatted Output
+                        </button>
+
+                        <h3 class="font-semibold text-gray-300 mb-3">Preview</h3>
+                        <div class="data-grid-container max-h-96">
+                            <table class="data-grid">
+                                <thead>
+                                    <tr>
+                                        <th>Solid</th>
+                                        <th>F (abs)</th>
+                                        <th>G (abs)</th>
+                                        <th>H (abs)</th>
+                                        <th>Add'l 1</th>
+                                        <th>Add'l 2</th>
+                                        <th>Add'l 3</th>
+                                        <th>Concatenated Line</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concat-preview-body"></tbody>
+                            </table>
+                        </div>
+                        <p id="concat-preview-placeholder" class="text-gray-600 text-center p-8">Generate output to see preview.</p>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div> 
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white px-5 py-3 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 z-50">
+        <span id="toast-message"></span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            /**
+             * Creates the initial state object for the Initial Stress interface.
+             */
+            function createInitialStressState() {
+                 return {
+                     fileName: null,
+                     originalHeaders: [], // Store original header names corresponding to A, F, G, H
+                     data: [], // Array of arrays, e.g., [[valA1, valF1, valG1, valH1], ...]
+                     editedData: {}, // Store edits: { "row_col": newValue }
+                     filters: {}, // { colIndex: filterValue }
+                     currentPage: 1,
+                     rowsPerPage: 25,
+                     totalRows: 0,
+                     filteredRows: 0,
+                     analysisResults: { 
+                        averageStressPerSolid: [], // [{ solid: '...', avgF: ..., avgG: ..., avgH: ... }]
+                        patternAnalysis: [] // [{ solid: '...', startRow: ..., endRow: ..., count: ..., avgCombined: ... }]
+                     }
+                 };
+            }
+            
+            let globalState = { 
+                activeInterface: 'initialStress', 
+                interfaces: { 
+                    initialStress: createInitialStressState()
+                } 
+            };
+           
+            // --- CORE FUNCTIONS ---
+            
+            function initialize() { 
+                renderInitialStressGrid(); 
+                renderStressAnalysisResults(); 
+                renderConcatenationModule(); 
+
+                // --- EVENT LISTENERS ---
+                attachInitialStressListeners(); // Attach new listeners
+            }
+
+            // --- Initial Stress Functions ---
+            
+            /**
+             * Attaches all event listeners for the Initial Stress interface.
+             */
+            function attachInitialStressListeners() {
+                const fileInput = document.getElementById('file-upload-initialStress');
+                const clearButton = document.getElementById('clear-data-btn-initialStress');
+                const rowsSelect = document.getElementById('rows-per-page-initialStress');
+                const prevButton = document.getElementById('prev-page-initialStress');
+                const nextButton = document.getElementById('next-page-initialStress');
+                const runAnalysisButton = document.getElementById('run-analysis-btn-initialStress'); 
+                const generateConcatButton = document.getElementById('generate-concatenation-btn');
+                const copyConcatButton = document.getElementById('copy-concat-btn');
+                
+                fileInput?.addEventListener('change', handleInitialStressFileUpload);
+                clearButton?.addEventListener('click', clearInitialStressData);
+                rowsSelect?.addEventListener('change', handleInitialStressRowsChange);
+                prevButton?.addEventListener('click', () => handleInitialStressPagination('prev'));
+                nextButton?.addEventListener('click', () => handleInitialStressPagination('next'));
+                runAnalysisButton?.addEventListener('click', performStressAnalysis); 
+                generateConcatButton?.addEventListener('click', generateConcatenatedOutput);
+                copyConcatButton?.addEventListener('click', copyConcatenatedOutput);
+            }
+             
+            /**
+             * Handles the file upload event for the Initial Stress interface.
+             * Reads the .xlsx or .csv file, extracts specific columns (A, F, G, H)
+             * from row 4 onwards, and populates the state.
+             */
+            function handleInitialStressFileUpload(event) {
+                 const file = event.target.files[0];
+                 const fileNameDisplay = document.getElementById('file-name-initialStress');
+                 const clearButton = document.getElementById('clear-data-btn-initialStress');
+                 const loadingIndicator = document.getElementById('loading-indicator-initialStress');
+                 const dataViewSection = document.getElementById('data-view-section-initialStress');
+                 const analysisSection = document.getElementById('stress-analysis-section-initialStress'); 
+                 const concatSection = document.getElementById('concatenation-module-section');
+
+                 if (!file) {
+                     fileNameDisplay.textContent = 'No file selected';
+                     clearButton.classList.add('hidden');
+                     dataViewSection.classList.add('hidden');
+                     analysisSection?.classList.add('hidden'); 
+                     concatSection?.classList.add('hidden'); 
+                     return;
+                 }
+
+                 const allowedExtensions = /(\.xlsx|\.csv)$/i;
+                 if (!allowedExtensions.exec(file.name)) {
+                     showToast("Invalid file format. Please upload .xlsx or .csv", "error");
+                     event.target.value = ''; 
+                     fileNameDisplay.textContent = 'Invalid file format';
+                     clearButton.classList.add('hidden');
+                     dataViewSection.classList.add('hidden');
+                     analysisSection?.classList.add('hidden'); 
+                     concatSection?.classList.add('hidden'); 
+                     return;
+                 }
+
+                 fileNameDisplay.textContent = file.name;
+                 clearButton.classList.remove('hidden');
+                 loadingIndicator.classList.remove('hidden');
+                 dataViewSection.classList.remove('hidden'); 
+                 analysisSection?.classList.remove('hidden'); 
+                 concatSection?.classList.remove('hidden'); 
+                 
+                 globalState.interfaces.initialStress = createInitialStressState(); 
+                 globalState.interfaces.initialStress.fileName = file.name;
+                 renderInitialStressGrid(); 
+                 renderStressAnalysisResults(); 
+                 renderConcatenationModule(); 
+
+                 const reader = new FileReader();
+
+                 reader.onload = function (e) {
+                     try {
+                         const data = e.target.result;
+                         let workbook;
+                         if (file.name.endsWith('.xlsx')) {
+                             workbook = XLSX.read(data, { type: 'binary' });
+                         } else { 
+                             workbook = XLSX.read(data, { type: 'string', raw: true }); 
+                         }
+                         const firstSheetName = workbook.SheetNames[0];
+                         const worksheet = workbook.Sheets[firstSheetName];
+                         
+                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "", rawNumbers: false }); 
+
+                         const extractedData = [];
+                         const headerRow = jsonData[0] || []; 
+                         const headers = [
+                             headerRow[0] ?? 'A', 
+                             headerRow[5] ?? 'F', 
+                             headerRow[6] ?? 'G', 
+                             headerRow[7] ?? 'H'  
+                         ];
+                         
+                         for (let i = 3; i < jsonData.length; i++) {
+                             const row = jsonData[i];
+                             const hasValue = row && (
+                                 (row[0] !== undefined && row[0] !== "") || 
+                                 (row[5] !== undefined && row[5] !== "") || 
+                                 (row[6] !== undefined && row[6] !== "") || 
+                                 (row[7] !== undefined && row[7] !== "")
+                             );
+
+                             if (hasValue) {
+                                 extractedData.push([
+                                     row[0] ?? "", 
+                                     row[5] ?? "", 
+                                     row[6] ?? "", 
+                                     row[7] ?? ""  
+                                 ]);
+                             }
+                         }
+
+                         const state = globalState.interfaces.initialStress;
+                         state.originalHeaders = headers; 
+                         state.data = extractedData;
+                         state.totalRows = extractedData.length;
+                         state.filteredRows = extractedData.length; 
+                         state.currentPage = 1; 
+                         state.filters = {}; 
+                         state.editedData = {}; 
+                         state.analysisResults = { averageStressPerSolid: [], patternAnalysis: [] }; 
+
+                         renderInitialStressGrid(); 
+                         updateInitialStressSummary(); 
+                         renderStressAnalysisResults(); 
+                         renderConcatenationModule(); 
+                         showToast(`Successfully processed ${state.totalRows} rows from ${file.name}.`, "success");
+
+                     } catch (error) {
+                         console.error("Error processing file:", error);
+                         showToast(`Error processing file: ${error.message}`, "error");
+                         clearInitialStressData(); 
+                     } finally {
+                         loadingIndicator.classList.add('hidden');
+                         event.target.value = ''; 
+                     }
+                 };
+
+                 reader.onerror = function (e) {
+                     console.error("FileReader error:", e);
+                     showToast("Error reading file.", "error");
+                     loadingIndicator.classList.add('hidden');
+                     clearInitialStressData();
+                     event.target.value = ''; 
+                 };
+
+                 if (file.name.endsWith('.xlsx')) {
+                     reader.readAsBinaryString(file);
+                 } else {
+                     reader.readAsText(file); 
+                 }
+            }
+
+            /**
+             * Clears all data, filters, and edits from the Initial Stress state
+             * and resets the UI.
+             */
+            function clearInitialStressData() {
+                 globalState.interfaces.initialStress = createInitialStressState();
+                 document.getElementById('file-upload-initialStress').value = '';
+                 document.getElementById('file-name-initialStress').textContent = 'No file selected';
+                 document.getElementById('clear-data-btn-initialStress').classList.add('hidden');
+                 document.getElementById('data-view-section-initialStress').classList.add('hidden');
+                 document.getElementById('loading-indicator-initialStress').classList.add('hidden');
+                 document.getElementById('stress-analysis-section-initialStress')?.classList.add('hidden'); 
+                 document.getElementById('concatenation-module-section')?.classList.add('hidden'); 
+                 renderInitialStressGrid(); 
+                 renderStressAnalysisResults(); 
+                 renderConcatenationModule(); 
+                 showToast("Data cleared.", "info");
+            }
+
+            /**
+             * Updates the summary statistics display (file name, row counts, page counts).
+             */
+            function updateInitialStressSummary() {
+                const state = globalState.interfaces.initialStress;
+                const summaryEl = document.getElementById('summary-stats-initialStress');
+                if (summaryEl) {
+                    const totalPages = Math.ceil(state.filteredRows / state.rowsPerPage) || 1;
+                    summaryEl.innerHTML = `
+                        <strong>File:</strong> ${state.fileName || 'N/A'} | 
+                        <strong>Total Rows Imported:</strong> ${state.totalRows} | 
+                        <strong>Rows Displayed:</strong> ${state.filteredRows} 
+                        (${totalPages} pages)
+                    `;
+                }
+            }
+
+            /**
+             * Renders the data grid for the Initial Stress interface based on
+             * the current state (filters, pagination, edits).
+             */
+            function renderInitialStressGrid() {
+                 const state = globalState.interfaces.initialStress;
+                 const head = document.getElementById('grid-head-initialStress');
+                 const body = document.getElementById('grid-body-initialStress');
+                 const placeholder = document.getElementById('grid-placeholder-initialStress');
+                 const gridContainer = document.getElementById('data-grid-container-initialStress');
+                 const paginationControls = document.getElementById('pagination-controls-initialStress');
+
+                 if (!head || !body || !placeholder || !gridContainer || !paginationControls) return;
+
+                 head.innerHTML = '';
+                 body.innerHTML = '';
+
+                 if (state.data.length === 0) {
+                     placeholder.classList.remove('hidden');
+                     gridContainer.classList.add('hidden'); 
+                     paginationControls.classList.add('hidden');
+                     updateInitialStressSummary(); 
+                     document.getElementById('stress-analysis-section-initialStress')?.classList.add('hidden'); 
+                     document.getElementById('concatenation-module-section')?.classList.add('hidden'); 
+                     return;
+                 }
+
+                 placeholder.classList.add('hidden');
+                 gridContainer.classList.remove('hidden');
+                 paginationControls.classList.remove('hidden');
+                 document.getElementById('stress-analysis-section-initialStress')?.classList.remove('hidden');
+                 document.getElementById('concatenation-module-section')?.classList.remove('hidden');
+
+                 let filteredData = state.data;
+                 Object.keys(state.filters).forEach(colIndex => {
+                     const filterValue = String(state.filters[colIndex] || '').toLowerCase(); 
+                     if (filterValue) {
+                         filteredData = filteredData.filter(row => {
+                            const cellValue = String(row[colIndex] ?? '').toLowerCase();
+                            return cellValue.includes(filterValue);
+                         });
+                     }
+                 });
+                 state.filteredRows = filteredData.length; 
+
+                 const totalPages = Math.ceil(state.filteredRows / state.rowsPerPage) || 1;
+                 state.currentPage = Math.max(1, Math.min(state.currentPage, totalPages)); 
+                 const startRow = (state.currentPage - 1) * state.rowsPerPage;
+                 const endRow = startRow + state.rowsPerPage;
+                 const paginatedData = filteredData.slice(startRow, endRow);
+
+                 const trHead = head.insertRow();
+                 state.originalHeaders.forEach((headerText, index) => {
+                     const th = document.createElement('th');
+                     th.style.minWidth = '150px'; 
+                     th.innerHTML = `
+                         <div>${headerText}</div>
+                         <input type="text" 
+                                class="is-filter-input config-input w-full mt-1" 
+                                placeholder="Filter..." 
+                                data-col-index="${index}"
+                                value="${state.filters[index] || ''}">
+                     `;
+                     th.querySelector('.is-filter-input').addEventListener('input', handleInitialStressFilterChange);
+                     trHead.appendChild(th);
+                 });
+                 
+                 paginatedData.forEach((row) => {
+                     const originalRowIndex = state.data.findIndex(originalRow => originalRow === row); 
+                     if (originalRowIndex === -1) return; 
+
+                     const tr = body.insertRow();
+                     row.forEach((cellValue, colIndex) => {
+                         const cellKey = `${originalRowIndex}_${colIndex}`;
+                         const editedValue = state.editedData[cellKey];
+                         const displayValue = editedValue !== undefined ? editedValue : cellValue;
+                         
+                         const td = tr.insertCell();
+                         td.textContent = displayValue;
+                         td.contentEditable = "true";
+                         td.dataset.rowIndex = originalRowIndex; 
+                         td.dataset.colIndex = colIndex;
+                         td.addEventListener('blur', handleInitialStressCellEdit);
+                         
+                         if (editedValue !== undefined) {
+                             td.style.backgroundColor = '#1e3a8a'; 
+                             td.style.fontStyle = 'italic';
+                         }
+                     });
+                 });
+
+                 document.getElementById('page-info-initialStress').textContent = `Page ${state.currentPage} of ${totalPages}`;
+                 document.getElementById('prev-page-initialStress').disabled = state.currentPage === 1;
+                 document.getElementById('next-page-initialStress').disabled = state.currentPage === totalPages;
+                 document.getElementById('rows-per-page-initialStress').value = state.rowsPerPage;
+                 
+                 updateInitialStressSummary(); 
+             }
+             
+            /**
+             * Handles changes to the filter inputs in the grid header.
+             * Updates the state and re-renders the grid.
+             */
+            function handleInitialStressFilterChange(event) {
+                 const colIndex = event.target.dataset.colIndex;
+                 const filterValue = event.target.value;
+                 const state = globalState.interfaces.initialStress;
+                 
+                 if (filterValue) {
+                     state.filters[colIndex] = filterValue;
+                 } else {
+                     delete state.filters[colIndex];
+                 }
+                 
+                 state.currentPage = 1; 
+                 renderInitialStressGrid();
+            }
+
+            /**
+             * Handles the 'blur' event when editing a cell in the data grid.
+             * Saves the edited value to the state and clears analysis results.
+             */
+            function handleInitialStressCellEdit(event) {
+                 const td = event.target;
+                 const rowIndex = parseInt(td.dataset.rowIndex);
+                 const colIndex = parseInt(td.dataset.colIndex);
+                 if (isNaN(rowIndex) || isNaN(colIndex)) {
+                     console.error("Invalid row or column index for editing:", td.dataset.rowIndex, td.dataset.colIndex);
+                     return; 
+                 }
+                 const newValue = td.textContent.trim();
+                 const state = globalState.interfaces.initialStress;
+                 
+                 if (!state.data[rowIndex]) {
+                     console.error("Data not found for row index:", rowIndex);
+                     const cellKeyFallback = `${rowIndex}_${colIndex}`;
+                     td.textContent = state.editedData[cellKeyFallback] ?? ''; 
+                     showToast("Error finding original data for edit.", "error");
+                     return;
+                 }
+
+                 const originalValue = state.data[rowIndex][colIndex];
+                 const cellKey = `${rowIndex}_${colIndex}`;
+
+                 if ([1, 2, 3].includes(colIndex) && newValue !== "" && isNaN(Number(newValue))) {
+                    showToast(`Invalid input for ${state.originalHeaders[colIndex]}. Please enter a number or leave blank.`, "warning");
+                    td.textContent = state.editedData[cellKey] ?? originalValue ?? '';
+                    return; 
+                 }
+
+
+                 if (newValue === String(originalValue ?? '')) {
+                     delete state.editedData[cellKey];
+                     td.style.backgroundColor = ''; 
+                     td.style.fontStyle = '';
+                 } else {
+                     state.editedData[cellKey] = newValue;
+                     td.style.backgroundColor = '#1e3a8a'; 
+                     td.style.fontStyle = 'italic';
+                     showToast(`Cell [Row ${rowIndex+1}, Col ${state.originalHeaders[colIndex]}] updated. Clear analysis results.`, "info");
+                 }
+                 clearStressAnalysisResults(); 
+                 clearConcatenationResults(); 
+            }
+
+            /**
+             * Handles changing the number of rows displayed per page.
+             */
+            function handleInitialStressRowsChange(event) {
+                 const state = globalState.interfaces.initialStress;
+                 state.rowsPerPage = parseInt(event.target.value);
+                 state.currentPage = 1; 
+                 renderInitialStressGrid();
+            }
+
+            /**
+             * Handles the 'Previous' and 'Next' page buttons.
+             */
+            function handleInitialStressPagination(direction) {
+                 const state = globalState.interfaces.initialStress;
+                 const totalPages = Math.ceil(state.filteredRows / state.rowsPerPage) || 1; 
+                 if (direction === 'prev' && state.currentPage > 1) {
+                     state.currentPage--;
+                 } else if (direction === 'next' && state.currentPage < totalPages) {
+                     state.currentPage++;
+                 }
+                 renderInitialStressGrid();
+            }
+             
+            // --- Stress Analysis Functions ---
+
+            /**
+             * Clears the analysis results from the state and re-renders
+             * the analysis section (which will show the placeholder).
+             */
+            function clearStressAnalysisResults() {
+                 const state = globalState.interfaces.initialStress;
+                 state.analysisResults = { averageStressPerSolid: [], patternAnalysis: [] };
+                 renderStressAnalysisResults(); 
+                 clearConcatenationResults(); 
+            }
+
+            /**
+             * Performs the stress analysis calculation.
+             * It groups data by Solid ID, calculates the average stress for F, G, and H,
+             * and stores the results in the state.
+             */
+            function performStressAnalysis() {
+                 const state = globalState.interfaces.initialStress;
+                 if (state.data.length === 0) {
+                     showToast("No data loaded to analyze.", "warning");
+                     return;
+                 }
+                 
+                 showToast("Running stress analysis...", "info");
+
+                 const getDataWithEdits = () => {
+                     return state.data.map((row, rowIndex) => {
+                         return row.map((originalValue, colIndex) => {
+                             const cellKey = `${rowIndex}_${colIndex}`;
+                             return state.editedData[cellKey] !== undefined ? state.editedData[cellKey] : originalValue;
+                         });
+                     });
+                 };
+                 const currentData = getDataWithEdits();
+
+                 const stressPerSolid = {}; 
+                 
+                 currentData.forEach(row => {
+                    const solidId = row[0]; 
+                    const stressF = parseFloat(row[1]); 
+                    const stressG = parseFloat(row[2]); 
+                    const stressH = parseFloat(row[3]); 
+
+                    if (solidId === "" || solidId === undefined) return; 
+
+                    if (!stressPerSolid[solidId]) {
+                        stressPerSolid[solidId] = { f: [], g: [], h: [] };
+                    }
+                    if (!isNaN(stressF)) stressPerSolid[solidId].f.push(stressF);
+                    if (!isNaN(stressG)) stressPerSolid[solidId].g.push(stressG);
+                    if (!isNaN(stressH)) stressPerSolid[solidId].h.push(stressH);
+                 });
+
+                 state.analysisResults.averageStressPerSolid = Object.keys(stressPerSolid).map(solidId => {
+                     const stresses = stressPerSolid[solidId];
+                     const avgF = stresses.f.length ? stresses.f.reduce((a, b) => a + b, 0) / stresses.f.length : NaN;
+                     const avgG = stresses.g.length ? stresses.g.reduce((a, b) => a + b, 0) / stresses.g.length : NaN;
+                     const avgH = stresses.h.length ? stresses.h.reduce((a, b) => a + b, 0) / stresses.h.length : NaN;
+                     return { solid: solidId, avgF: avgF, avgG: avgG, avgH: avgH };
+                 }).sort((a,b) => String(a.solid).localeCompare(String(b.solid), undefined, {numeric: true})); 
+
+                 renderStressAnalysisResults(); 
+                 clearConcatenationResults(); 
+                 showToast("Stress analysis complete.", "success");
+            }
+
+            /**
+             * Renders the "Average Stress per Solid" table based on
+             * the results in the state.
+             */
+            function renderStressAnalysisResults() {
+                 const state = globalState.interfaces.initialStress;
+                 const avgHead = document.getElementById('avg-stress-head');
+                 const avgBody = document.getElementById('avg-stress-body');
+                 const avgPlaceholder = document.getElementById('avg-stress-placeholder');
+
+                 if (!avgHead || !avgBody || !avgPlaceholder) return;
+
+                 avgHead.innerHTML = '';
+                 avgBody.innerHTML = '';
+                 avgPlaceholder.classList.toggle('hidden', state.analysisResults.averageStressPerSolid.length > 0);
+
+                 if (state.analysisResults.averageStressPerSolid.length > 0) {
+                     avgHead.innerHTML = `<tr><th>Solid ID</th><th>Avg Stress F</th><th>Avg Stress G</th><th>Avg Stress H</th></tr>`;
+                     state.analysisResults.averageStressPerSolid.forEach(result => {
+                         const tr = avgBody.insertRow();
+                         tr.insertCell().textContent = result.solid;
+                         tr.insertCell().textContent = isNaN(result.avgF) ? 'N/A' : result.avgF.toFixed(3); 
+                         tr.insertCell().textContent = isNaN(result.avgG) ? 'N/A' : result.avgG.toFixed(3);
+                         tr.insertCell().textContent = isNaN(result.avgH) ? 'N/A' : result.avgH.toFixed(3);
+                     });
+                 }
+            }
+
+            // --- Concatenation Module Functions ---
+
+            /**
+             * Clears the concatenation preview table.
+             */
+            function clearConcatenationResults() {
+                 const concatPreviewBody = document.getElementById('concat-preview-body');
+                 const concatPreviewPlaceholder = document.getElementById('concat-preview-placeholder');
+                 
+                 if (concatPreviewBody) concatPreviewBody.innerHTML = '';
+                 if (concatPreviewPlaceholder) concatPreviewPlaceholder.classList.remove('hidden');
+            }
+
+            /**
+             * Initializes the concatenation module section (ensures it's visible).
+             * This function is mostly a placeholder in this file as the section is
+             * part of the HTML structure.
+             */
+            function renderConcatenationModule() {
+                 // This function is called to ensure the section is properly initialized
+                 const concatSection = document.getElementById('concatenation-module-section');
+                 if (concatSection) {
+                     // Section is already in the DOM, no need to recreate
+                     return;
+                 }
+            }
+
+            /**
+             * Generates the final formatted text output based on the analysis results.
+             * It formats each value (Solid ID, stresses) to a specific string format
+             * and joins them.
+             */
+            function generateConcatenatedOutput() {
+                 const state = globalState.interfaces.initialStress;
+                 const concatPreviewBody = document.getElementById('concat-preview-body');
+                 const concatPreviewPlaceholder = document.getElementById('concat-preview-placeholder');
+                 
+                 // Validation
+                 if (!state.analysisResults.averageStressPerSolid || state.analysisResults.averageStressPerSolid.length === 0) {
+                     showToast("No analysis results available. Run stress analysis first.", "error");
+                     return;
+                 }
+                 
+                 try {
+                     const results = state.analysisResults.averageStressPerSolid;
+                     const lines = [];
+                     
+                     // Clear previous results
+                     if (concatPreviewBody) concatPreviewBody.innerHTML = '';
+                     if (concatPreviewPlaceholder) concatPreviewPlaceholder.classList.add('hidden');
+                     
+                     // Process each row
+                     results.forEach((result, index) => {
+                         // Validate solid ID
+                         const solidId = result.solid;
+                         if (solidId === undefined || solidId === null || solidId === "") {
+                             throw new Error(`Missing solid ID at row ${index + 1}`);
+                         }
+                         
+                         // Format solid ID as 5-digit number with leading zeros
+                         const formattedSolidId = parseInt(solidId, 10).toString().padStart(5, '0');
+                         
+                         // Validate and format stress values
+                         const avgF = result.avgF;
+                         const avgG = result.avgG;
+                         const avgH = result.avgH;
+                         
+                         if (isNaN(avgF) || isNaN(avgG) || isNaN(avgH)) {
+                             throw new Error(`Invalid stress values for solid ${solidId}`);
+                         }
+                         
+                         // Calculate absolute values and format to 000.000
+                         const absF = Math.abs(avgF);
+                         const absG = Math.abs(avgG);
+                         const absH = Math.abs(avgH);
+                         
+                         // Format with 3 digits before decimal and 3 after
+                         const formatStress = (value) => {
+                             const fixed = value.toFixed(3);
+                             const parts = fixed.split('.');
+                             const integerPart = parts[0].padStart(3, '0');
+                             return `${integerPart}.${parts[1]}`;
+                         };
+                         
+                         const formattedF = formatStress(absF);
+                         const formattedG = formatStress(absG);
+                         const formattedH = formatStress(absH);
+                         
+                         // Format additional 000.000 values (hardcoded as 000.000 for now)
+                         const additional1 = "000.000";
+                         const additional2 = "000.000";
+                         const additional3 = "000.000";
+                         
+                         // Create concatenated output with proper spacing
+                         const concatenatedLine = `${formattedSolidId}   ${formattedF}   ${formattedG}   ${formattedH}   ${additional1}   ${additional2}   ${additional3}`;
+                         lines.push(concatenatedLine);
+                         
+                         // Add to preview table
+                         if (concatPreviewBody) {
+                             const tr = document.createElement('tr');
+                             tr.innerHTML = `
+                                 <td>${formattedSolidId}</td>
+                                 <td>${formattedF}</td>
+                                 <td>${formattedG}</td>
+                                 <td>${formattedH}</td>
+                                 <td>${additional1}</td>
+                                 <td>${additional2}</td>
+                                 <td>${additional3}</td>
+                                 <td class="font-mono">${concatenatedLine}</td>
+                             `;
+                             concatPreviewBody.appendChild(tr);
+                         }
+                     });
+                     
+                     // Store the concatenated output in a global variable for copying
+                     globalState.interfaces.initialStress.concatenatedOutput = lines.join('\n');
+                     
+                     showToast(`Generated concatenated output for ${lines.length} solids.`, "success");
+                     
+                 } catch (error) {
+                     console.error("Concatenation error:", error);
+                     showToast(`Error generating output: ${error.message}`, "error");
+                     clearConcatenationResults();
+                 }
+            }
+
+            /**
+             * Copies the final concatenated output to the clipboard.
+             */
+            function copyConcatenatedOutput() {
+                 if (!globalState.interfaces.initialStress.concatenatedOutput) {
+                     showToast("Nothing to copy. Generate output first.", "error");
+                     return;
+                 }
+                 
+                 try {
+                     const textArea = document.createElement('textarea');
+                     textArea.value = globalState.interfaces.initialStress.concatenatedOutput;
+                     document.body.appendChild(textArea);
+                     textArea.select();
+                     textArea.setSelectionRange(0, 99999);
+                     document.execCommand('copy');
+                     document.body.removeChild(textArea);
+                     showToast("Copied to clipboard!", "success");
+                 } catch (err) {
+                     showToast("Copy failed.", "error");
+                 }
+            }
+            
+            // --- Toast Notification ---
+            let toastTimer; 
+            function showToast(message, type = "info") { 
+                const toast = document.getElementById('toast'); 
+                const msg = document.getElementById('toast-message'); 
+                if (!toast || !msg) return; 
+                msg.textContent = message; 
+                toast.className = 'fixed bottom-5 right-5 text-white px-5 py-3 rounded-lg shadow-xl transition-opacity duration-300 opacity-100 z-50'; // Ensure z-index
+                const color = type === "success" ? 'bg-green-600' : type === "error" ? 'bg-red-600' : type === "warning" ? 'bg-blue-600' : 'bg-gray-900'; 
+                toast.classList.add(color); 
+                clearTimeout(toastTimer); 
+                toastTimer = setTimeout(() => { toast.classList.remove('opacity-100'); toast.classList.remove(color); }, 3000); 
+            }
+            
+            // --- Initialize App ---
+            initialize();
+        });
+    </script>
+</body>
+</html>
